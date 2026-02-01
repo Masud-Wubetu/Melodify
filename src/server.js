@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const { StatusCodes } = require('http-status-codes')
+const userRouter = require('./routes/userRoutes')
 
 // Load environment variable
 dotenv.config();
@@ -20,8 +22,25 @@ mongoose
 
 // pass incoming data
 app.use(express.json());
+
 // Routes
 app.use('/api/users', userRouter);
+
+// Error handling
+//404
+app.use((req, res, next) => {
+    const error = new Error('Not Found');
+    error.status = StatusCodes.NOT_FOUND;
+    next(error);
+});
+
+ // Global error handler
+ app.use((err, req, res, next) => {
+    res.status(err.status || StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: err.message || 'Internal server error',
+        status: 'error'
+    });
+ });
 
 //Start the server
 const PORT = process.env.PORT || 5000;
