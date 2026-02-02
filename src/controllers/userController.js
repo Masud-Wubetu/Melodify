@@ -63,7 +63,24 @@ const loginUser = asyncHandler(async(req, res) => {
     }
 });
 
+//Get user profile
+const getUserProfile =  asyncHandler(async(req, res) => {
+    //Find the user
+    console.log('Profile ctrl' , req.user);
+});
+//!update user profile
+const updateProfileUser =  asyncHandler(async(req, res) => {});
+//!Toggle like song
+const toggleLikeSong =  asyncHandler(async(req, res) => {});
+//!Toggle follow artist
+const toggleFollowArtist =  asyncHandler(async(req, res) => {});
+//!Toggle follow playlist
+const toggleFollowPlaylist =  asyncHandler(async(req, res) => {});
+//!get users
+const getUsers =  asyncHandler(async(req, res) => {});
+
 module.exports = {
     registerUser,
     loginUser,
+    getUserProfile,
 }
