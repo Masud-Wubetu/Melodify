@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const User = require('../models/User');
+const generateToken = require('../utils/generateToken');
 
 //@desc - register a new user
 //@route - POST /api/users/register
@@ -54,7 +55,7 @@ const loginUser = asyncHandler(async(req, res) => {
             email: user.email,
             isAdmin: user.isAdmin,
             profilePicture: user.profilePicture,
-            token: 'token here'
+            token: generateToken(user._id)
         });
     } else {
         res.status(StatusCodes.UNAUTHORIZED);
