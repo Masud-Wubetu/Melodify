@@ -4,6 +4,7 @@ const User = require('../models/User');
 
 //@desc - register a new user
 //@route - POST /api/users/register
+//@Access - Public
 
 const registerUser = asyncHandler( async (req, res) => {
     // Get the payload
@@ -37,6 +38,31 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 });
 
+//@desc - login User
+//@route - POST /api/users/login
+//@Access - Public
+const loginUser = asyncHandler(async(req, res) => {
+    const { email, password } = req.body;
+    //Find the User
+    const user = await User.findOne({ email });
+    
+    // Check if user exists and match password
+    if(user && (await user.matchPassword(password))) {
+        res.status(StatusCodes.OK).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            isAdmin: user.isAdmin,
+            profilePicture: user.profilePicture,
+            token: 'token here'
+        });
+    } else {
+        res.status(StatusCodes.UNAUTHORIZED);
+        throw new Error('Invalid email or password');
+    }
+});
+
 module.exports = {
     registerUser,
+    loginUser,
 }
