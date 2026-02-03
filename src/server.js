@@ -1,11 +1,15 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+require('./models/Song');
+require('./models/Artist');
+require('./models/Album');
+require('./models/Playlist');
+
 const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const { StatusCodes } = require('http-status-codes')
 const userRouter = require('./routes/userRoutes')
-
-// Load environment variable
-dotenv.config();
 
 // Initialize app
 const app = express();

@@ -42,7 +42,7 @@ const registerUser = asyncHandler( async (req, res) => {
 //@desc - login User
 //@route - POST /api/users/login
 //@Access - Public
-const loginUser = asyncHandler(async(req, res) => {
+const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     //Find the User
     const user = await User.findOne({ email });
@@ -64,20 +64,33 @@ const loginUser = asyncHandler(async(req, res) => {
 });
 
 //Get user profile
-const getUserProfile =  asyncHandler(async(req, res) => {
+const getUserProfile =  asyncHandler(async (req, res) => {
     //Find the user
-    console.log('Profile ctrl' , req.user);
+    const user = await User.findById(req.user._id)
+        .select("-password")
+        .populate("likedSongs", "title artist duration")
+        .populate("likedAlbums", "title artist coverImage")
+        .populate("followedArtists", "name image")
+        .populate("followedPlaylists", "name creator coverImage");
+        
+    if(user) {
+        res.status(StatusCodes.OK).json(user);
+    }else {
+        res.status(StatusCodes.NOT_FOUND)
+        throw new Error("User Not Found!")
+    }
 });
+
 //!update user profile
-const updateProfileUser =  asyncHandler(async(req, res) => {});
+const updateProfileUser =  asyncHandler(async (req, res) => {});
 //!Toggle like song
-const toggleLikeSong =  asyncHandler(async(req, res) => {});
+const toggleLikeSong =  asyncHandler(async (req, res) => {});
 //!Toggle follow artist
-const toggleFollowArtist =  asyncHandler(async(req, res) => {});
+const toggleFollowArtist =  asyncHandler(async (req, res) => {});
 //!Toggle follow playlist
-const toggleFollowPlaylist =  asyncHandler(async(req, res) => {});
+const toggleFollowPlaylist =  asyncHandler(async (req, res) => {});
 //!get users
-const getUsers =  asyncHandler(async(req, res) => {});
+const getUsers =  asyncHandler(async (req, res) => {});
 
 module.exports = {
     registerUser,

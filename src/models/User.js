@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
-        require: [true, 'Name is required'],
+        required: [true, 'Name is required'],
         trim: true
     },
     email: {
@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
         default: 'https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg'
     },
     isAdmin: {
-        type: String,
+        type: Boolean,
         default: false
     },
     likedSongs: [
@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema({
         },
     ],
 
-    followedPlayLists: [
+    followedPlaylists: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Artist'
@@ -64,7 +64,7 @@ userSchema.methods.matchPassword =  async function(enteredPassword) {
 
 // Hashing password
 userSchema.pre("save", async function() {
-    if(!this.isModified('password'));
+    if(!this.isModified('password')) return next();
 
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
