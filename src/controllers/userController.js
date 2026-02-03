@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const uploadToCloudinary = require('../utils/cloudinaryUpload');
 
 //@desc - register a new user
 //@route - POST /api/users/register
@@ -82,7 +83,37 @@ const getUserProfile =  asyncHandler(async (req, res) => {
 });
 
 //!update user profile
-const updateProfileUser =  asyncHandler(async (req, res) => {});
+const updateUserProfile =  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+    const { name, email, password } = req.body;
+    if(user) {
+        user.name = name || user.name;
+        user.email = email || user.email;
+        // Check if password is being updated
+        if(password) {
+            user.password = password;
+        }
+    
+        // Upload Profile Picture if Provided
+        if(req.file) {
+            const result = await uploadToCloudinary(req.file.path, "melodify/users");
+            user.profilePicture = result.secure_url;
+        }
+    
+        const updatedUser = await useR();
+        res.status(StatusCodes.OK).json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            profilePicture: updatedUser.profilePicture,
+            isAdmin: updatedUser.isAdmin,
+        });
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('User Not Found');
+    }
+    
+});
 //!Toggle like song
 const toggleLikeSong =  asyncHandler(async (req, res) => {});
 //!Toggle follow artist
@@ -96,4 +127,5 @@ module.exports = {
     registerUser,
     loginUser,
     getUserProfile,
+    updateUserProfile,
 }
