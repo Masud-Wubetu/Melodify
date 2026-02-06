@@ -2,7 +2,7 @@ const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
-const uploadToCloudinary = require('../utils/cloudinaryUpload');
+const { uploadToCloudinary } = require('../utils/cloudinaryUpload');
 
 //@desc - register a new user
 //@route - POST /api/users/register
@@ -91,8 +91,7 @@ const updateUserProfile =  asyncHandler(async (req, res) => {
         user.email = email || user.email;
         // Check if password is being updated
         if(password) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(password, salt);
+            user.password = password;
         }
     
         // Upload Profile Picture if Provided
