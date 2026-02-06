@@ -6,6 +6,11 @@ const { StatusCodes } = require('http-status-codes');
 // Middleware to protect routes - verify JWT token and set req.user
 const protect = asyncHandler(async( req, res, next) => {
     let token;
+    // Check if user attaching token to the header
+    if(!req.headers.authorization) {
+        res.status(StatusCodes.UNAUTHORIZED)
+        throw new Error('no token provided in the header');
+    }
 
     // Check if token exists in Authorization header
     if(
@@ -25,11 +30,12 @@ const protect = asyncHandler(async( req, res, next) => {
         } catch (error) {
             console.log(error);
             res.status(StatusCodes.UNAUTHORIZED);
-            throw new Error('Not authorized, token failed!')
+            return next(error);
         }
     }else {
-        res.status(StatusCodes.UNAUTHORIZED);
-        throw new Error('Not authorized, no token');
+        const error = new Error('Not authorized, no token');
+        error.status = StatusCodes.UNAUTHORIZED;
+        return next(error);
     }
 });
 

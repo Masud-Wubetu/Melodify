@@ -91,7 +91,8 @@ const updateUserProfile =  asyncHandler(async (req, res) => {
         user.email = email || user.email;
         // Check if password is being updated
         if(password) {
-            user.password = password;
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(password, salt);
         }
     
         // Upload Profile Picture if Provided
@@ -100,7 +101,7 @@ const updateUserProfile =  asyncHandler(async (req, res) => {
             user.profilePicture = result.secure_url;
         }
     
-        const updatedUser = await useR();
+        const updatedUser = await user.save();
         res.status(StatusCodes.OK).json({
             _id: updatedUser._id,
             name: updatedUser.name,
