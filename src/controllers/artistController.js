@@ -48,6 +48,40 @@ const createArtist = asyncHandler(async (req, res) => {
     res.status(StatusCodes.CREATED).json(artist);
 });
 
+//@desc - get all Artists with filtering and pagination
+//@route - GET/api/artist?genre=Rock 
+//@Access - Public
+
+const getArtists = asyncHandler(async (req, res) => {
+    const { genre, search, page=1, limit=10 } = req.query;
+    // Build filter object
+    const filter = {};
+    if(genre) filter.genres = {$in:[genre]};
+    if(search) {
+        filter.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { bio: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    // Count total artist with the filter
+    const count = await Artist.countDocuments(filter);
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Get artists
+    const artists = await Artist.find(filter)
+        .sort({ followers: -1 })
+        .limit(parseInt(limit))
+        .skip(skip)
+        res.status(StatusCodes.OK).json({
+            artists,
+            page: parseInt(page),
+            pages: Math.ceil(count / parseInt(limit)),
+            totalArtist: count,
+        });
+});
+
 module.exports = {
     createArtist,
+    getArtists,
 }
