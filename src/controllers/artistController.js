@@ -95,8 +95,37 @@ const getArtistsById = asyncHandler(async (req, res) => {
     }
 });
 
+//@desc - Update artist by id
+//@route - PUT /api/artist/id
+//@Access - Private/Admin
+
+const updateArtist =  asyncHandler(async (req, res) => {
+    const { name, bio, genres, isVerified } = req.body;
+    const artist = await Artist.findById(req.params.id);
+    if(!artist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Artist Not Found');
+    }
+    // Update Artist details
+    artist.name = name || artist.name;
+    artist.bio = bio || artist.bio;
+    artist.genres = genres || artist.genres;
+    artist.isVerified = 
+        isVerified !== undefined ? isVerified === 'true' : artist.
+        isVerified;
+    // Update image if provided
+    if(req.file) {
+        result = await uploadToCloudinary(req.file.path, 'melodify/artists');
+        artist.image = result.secure_url;
+    }
+    // reSave
+    const updatedArtist = await artist.save();
+    res.status(StatusCodes.OK).json(updatedArtist);
+});
+
 module.exports = {
     createArtist,
     getArtists,
     getArtistsById,
+    updateArtist,
 }
