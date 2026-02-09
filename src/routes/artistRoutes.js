@@ -7,7 +7,7 @@ const { createArtist,
         getTopArtists,
         getArtistTopSongs } = require('../controllers/artistController');
 const { protect, isAdmin }= require('../middlewares/auth');
-const upload = require('../middlewares/upload')
+const upload = require('../middlewares/upload');
 const artistRouter = express.Router();
 
 // Public

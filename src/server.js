@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const { StatusCodes } = require('http-status-codes')
 const userRouter = require('./routes/userRoutes');
 const artistRouter = require('./routes/artistRoutes');
+const albumRouter = require('./routes/albumRoutes');
 
 // Initialize app
 const app = express();
@@ -30,7 +31,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/users', userRouter);
-app.use('/api/artists', artistRouter)
+app.use('/api/artists', artistRouter);
+app.use('/api/albums', albumRouter);
 
 // Error handling
 //404
