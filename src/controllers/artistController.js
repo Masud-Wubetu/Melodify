@@ -33,8 +33,8 @@ const createArtist = asyncHandler(async (req, res) => {
     //upload artist image if provided
     let imageUrl = "";
     if(req.file) {
-        const result = uploadToCloudinary(req.file.path, 'melodify/artists');
-        imageUrl = result.Secure_url;
+        const result = await uploadToCloudinary(req.file.path, 'melodify/artists');
+        imageUrl = result.secure_url;
     }
 
     // Create artist
@@ -115,7 +115,7 @@ const updateArtist =  asyncHandler(async (req, res) => {
         isVerified;
     // Update image if provided
     if(req.file) {
-        result = await uploadToCloudinary(req.file.path, 'melodify/artists');
+        const result = await uploadToCloudinary(req.file.path, 'melodify/artists');
         artist.image = result.secure_url;
     }
     // reSave
@@ -138,8 +138,20 @@ const deleteArtist =  asyncHandler(async (req, res) => {
 
     // Delete all albums by artist
     await Album.deleteMany({ artist: artist._id });
-    await Artist.deleteOne();
+    await artist.deleteOne();
     res.status(StatusCodes.OK).json({ message: 'Artist removed'});
+});
+
+//@desc - Get 10 top artists by followers
+//@route - POST /api/artists/top?limit=10
+//@Access - Public
+
+const getTopArtists = asyncHandler(async (req, res) => {
+    const { limit } = req.query;
+    const artists = await Artist.find()
+        .sort({ followers: -1 })
+        .limit(parseInt(limit));
+    res.status(StatusCodes.OK).json(artists);
 });
 
 module.exports = {
@@ -148,4 +160,5 @@ module.exports = {
     getArtistsById,
     updateArtist,
     deleteArtist,
+    getTopArtists,
 }

@@ -1,11 +1,17 @@
 const express = require('express');
-const { createArtist, getArtists, getArtistsById, updateArtist, deleteArtist } = require('../controllers/artistController');
+const { createArtist,
+        getArtists, 
+        getArtistsById, 
+        updateArtist, 
+        deleteArtist,
+        getTopArtists, } = require('../controllers/artistController');
 const { protect, isAdmin }= require('../middlewares/auth');
 const upload = require('../middlewares/upload')
 const artistRouter = express.Router();
 
 // Public
 artistRouter.get('/', getArtists);
+artistRouter.get('/top', getTopArtists);
 artistRouter.get('/:id', getArtistsById);
 //Admin
 artistRouter.post('/', protect, isAdmin, upload.single('image'), createArtist);
