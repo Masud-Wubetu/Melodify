@@ -95,7 +95,7 @@ const getArtistsById = asyncHandler(async (req, res) => {
     }
 });
 
-//@desc - Update artist by id
+//@desc - Update artist
 //@route - PUT /api/artist/id
 //@Access - Private/Admin
 
@@ -123,9 +123,29 @@ const updateArtist =  asyncHandler(async (req, res) => {
     res.status(StatusCodes.OK).json(updatedArtist);
 });
 
+//@desc - Delete artist
+//@route - DELETE /api/artist/id
+//@Access - Private/Admin
+
+const deleteArtist =  asyncHandler(async (req, res) => {
+    const artist = await Artist.findById(req.params.id);
+     if(!artist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Artist Not Found');
+    }
+    // Delete all songs by artist
+    await Song.deleteMany({ artist: artist._id });
+
+    // Delete all albums by artist
+    await Album.deleteMany({ artist: artist._id });
+    await Artist.deleteOne();
+    res.status(StatusCodes.OK).json({ message: 'Artist removed'});
+});
+
 module.exports = {
     createArtist,
     getArtists,
     getArtistsById,
     updateArtist,
+    deleteArtist,
 }
