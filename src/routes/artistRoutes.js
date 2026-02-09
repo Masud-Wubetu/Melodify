@@ -4,7 +4,8 @@ const { createArtist,
         getArtistsById, 
         updateArtist, 
         deleteArtist,
-        getTopArtists, } = require('../controllers/artistController');
+        getTopArtists,
+        getArtistTopSongs } = require('../controllers/artistController');
 const { protect, isAdmin }= require('../middlewares/auth');
 const upload = require('../middlewares/upload')
 const artistRouter = express.Router();
@@ -12,6 +13,7 @@ const artistRouter = express.Router();
 // Public
 artistRouter.get('/', getArtists);
 artistRouter.get('/top', getTopArtists);
+artistRouter.get('/:id/top-songs', getArtistTopSongs);
 artistRouter.get('/:id', getArtistsById);
 //Admin
 artistRouter.post('/', protect, isAdmin, upload.single('image'), createArtist);

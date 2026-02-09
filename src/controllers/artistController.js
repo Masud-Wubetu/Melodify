@@ -154,6 +154,25 @@ const getTopArtists = asyncHandler(async (req, res) => {
     res.status(StatusCodes.OK).json(artists);
 });
 
+//@desc - Get Artist's top Song
+//@route - POST /api/artists/:id/top-songs?limit=5
+//@Access - Public
+
+const getArtistTopSongs = asyncHandler(async (req, res) => {
+    const { limit } = req.query;
+    const songs = await Song.find()
+        .sort({ followers: -1 })
+        .limit(parseInt(limit))
+        .populate('album', 'title coverImage');
+
+    if(songs.length > 0) {
+        res.status(StatusCodes.OK).json(songs);
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('No songs found for this artist');
+    }
+});
+
 module.exports = {
     createArtist,
     getArtists,
@@ -161,4 +180,5 @@ module.exports = {
     updateArtist,
     deleteArtist,
     getTopArtists,
+    getArtistTopSongs
 }
