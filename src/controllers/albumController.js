@@ -3,55 +3,116 @@ const { StatusCodes } = require('http-status-codes');
 const Artist = require('../models/Artist');
 const Album = require('../models/Album');
 const Song = require('../models/Song');
-const  uploadToCloudinary = require('../utils/cloudinaryUpload')
+const uploadToCloudinary = require('../utils/cloudinaryUpload')
 
 //@desc - Create new Album
 //@route - POST /api/albums
 //@Access - Private/Admin
 
-const createAlbum = asyncHandler(async (req, res) => {});
+const createAlbum = asyncHandler(async (req, res) => {
+    if (!req.body) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Request body is required');
+    }
+    const { title, artistId, releaseDate, genre, description,
+        isExplicit } = req.body;
+    // Validations
+    if (!title || !artistId || !releaseDate || !genre || !description) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error(
+            'title, artistId, releaseDate, genre and description are required.'
+        );
+    }
+
+    if (title.length < 3 || title.length > 100) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Title must be between 3 and 100 characters');
+    }
+
+    if (description.length < 10 || description.length > 200) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Description must be between 10 and 200 characters');
+    }
+
+    // Check if artists already exists
+    const artist = await Artist.findById(artistId);
+    if (!artist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Artist Not FOUND.');
+    }
+
+    // Check if album already exists
+    const albumExists = await Album.findOne({ title });
+    if (albumExists) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Album already exists.');
+    }
+
+    // upload coverImage if provided
+    let coverImageUrl = ""
+    if (req.file) {
+        const result = await uploadToCloudinary(req.file.path, 'melodify/albums');
+        coverImageUrl = result.secure_url;
+    }
+    // Create album
+    const album = await Album.create({
+        title,
+        artist: artistId,
+        releaseDate: releaseDate ? new Date(releaseDate) : Date.now(),
+        coverImage: coverImageUrl || undefined,
+        genre,
+        description,
+        isExplicit: isExplicit === 'true'
+    });
+
+    // add album to artist's albums
+    artist.albums.push(album._id);
+    await artist.save();
+    res.status(StatusCodes.CREATED).json(album);
+
+});
 
 //@desc - Get all Albums with filtering and pagination
 //@route - GET /api/albums
 //@Access - Public
 
-const getAlbums = asyncHandler(async (req, res) => {});
+const getAlbums = asyncHandler(async (req, res) => { });
 
 //@desc - Get albums by id 
 //@route - GET /api/albums/:id
 //@Access - Public
 
-const getAlbumById = asyncHandler(async (req, res) => {});
+const getAlbumById = asyncHandler(async (req, res) => { });
 
 //@desc - Update Album details
 //@route - PUT /api/albums/:id
 //@Access - Private/Admin
 
-const updateAlbum = asyncHandler(async (req, res) => {});
+const updateAlbum = asyncHandler(async (req, res) => { });
 
 //@desc - Delete Album
 //@route - DELETE /api/albums/:id
 //@Access - Private/Admin
 
-const deleteAlbum = asyncHandler(async (req, res) => {});
+const deleteAlbum = asyncHandler(async (req, res) => { });
 
 //@desc - Add Songs to Album
 //@route - PUT /api/albums/:id/add-songs
 //@Access - Private/Admin
 
-const addSongsToAlbum = asyncHandler(async (req, res) => {});
+const addSongsToAlbum = asyncHandler(async (req, res) => { });
 
 //@desc - remove song from Album
 //@route - POST /api/albums/:id/remove-song/:songId
 //@Access - Private/Admin
 
-const removeSongFromAlbum = asyncHandler(async (req, res) => {});
+const removeSongFromAlbum = asyncHandler(async (req, res) => { });
 
 //@desc - Get new releases (recently added albums)
 //@route - POST /api/albums/new-releases?limit=10
 //@Access - Public
 
-const getNewReleases = asyncHandler(async (req, res) => {});
+const getNewReleases = asyncHandler(async (req, res) => { });
 
 module.exports = {
     createAlbum,

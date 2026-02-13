@@ -2,7 +2,7 @@ const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
-const { uploadToCloudinary } = require('../utils/cloudinaryUpload');
+const  uploadToCloudinary  = require('../utils/cloudinaryUpload');
 
 //@desc - register a new user
 //@route - POST /api/users/register
