@@ -15,7 +15,7 @@ const artistSchema = new mongoose.Schema({
 
     releaseDate: {
         type: Date,
-        default: Date.now(),
+        default: Date.now,
     },
 
     image: {
@@ -24,10 +24,9 @@ const artistSchema = new mongoose.Schema({
     },
 
     genres: [
-      {
-        type: String,
-        ref: 'Song'
-      }
+        {
+            type: String,
+        }
     ],
 
     followers: {

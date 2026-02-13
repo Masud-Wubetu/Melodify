@@ -16,7 +16,7 @@ const albumSchema = new mongoose.Schema({
 
     releaseDate: {
         type: Date,
-        default: Date.now(),
+        default: Date.now,
     },
 
     coverImage: {
@@ -25,10 +25,10 @@ const albumSchema = new mongoose.Schema({
     },
 
     songs: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Song'
-      }
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Song'
+        }
     ],
 
     genre: {
@@ -40,12 +40,12 @@ const albumSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    
+
     description: {
         type: String,
         default: 0
     },
-    
+
     isExplicit: {
         type: Boolean,
         default: false

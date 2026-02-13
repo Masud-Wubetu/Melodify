@@ -76,13 +76,55 @@ const createAlbum = asyncHandler(async (req, res) => {
 //@route - GET /api/albums
 //@Access - Public
 
-const getAlbums = asyncHandler(async (req, res) => { });
+const getAlbums = asyncHandler(async (req, res) => {
+    const { genre, search, page = 1, limit = 10 } = req.query;
+    const { artist } = req.body || {};
+    // Build filter object
+    const filter = {};
+    if (genre) filter.genre = genre;
+    if (artist) filter.artist = artist;
+    if (search) {
+        filter.$or = [
+            { title: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    // Count total albums with the filter
+    const count = await Album.countDocuments(filter);
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get albums
+    const albums = await Album.find(filter)
+        .populate('artist', 'name image')
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit))
+        .skip(skip);
+
+    res.status(StatusCodes.OK).json({
+        albums,
+        page: parseInt(page),
+        pages: Math.ceil(count / parseInt(limit)),
+        totalAlbums: count,
+    });
+});
 
 //@desc - Get albums by id 
 //@route - GET /api/albums/:id
 //@Access - Public
 
-const getAlbumById = asyncHandler(async (req, res) => { });
+const getAlbumById = asyncHandler(async (req, res) => {
+    const album = await Album.findById(req.params.id)
+        .populate('artist', 'name image')
+        .populate('songs', 'title duration audioUrl');
+    if (!album) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Album Not FOUND.');
+    }
+    res.status(StatusCodes.OK).json(album);
+});
 
 //@desc - Update Album details
 //@route - PUT /api/albums/:id

@@ -32,7 +32,7 @@ const songSchema = new mongoose.Schema({
 
     releaseDate: {
         type: Date,
-        default: Date.now(),
+        default: Date.now,
     },
 
     coverImage: {
@@ -43,14 +43,14 @@ const songSchema = new mongoose.Schema({
     genre: {
         type: String,
         trim: true
-      },
+    },
 
     plays: {
         type: Number,
         default: 0
     },
 
-     likes: {
+    likes: {
         type: Number,
         default: 0
     },

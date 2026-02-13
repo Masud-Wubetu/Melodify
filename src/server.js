@@ -28,6 +28,7 @@ mongoose
 
 // pass incoming data
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/users', userRouter);
@@ -42,13 +43,13 @@ app.use((req, res, next) => {
     next(error);
 });
 
- // Global error handler
- app.use((err, req, res, next) => {
+// Global error handler
+app.use((err, req, res, next) => {
     res.status(err.status || StatusCodes.INTERNAL_SERVER_ERROR).json({
         message: err.message || 'Internal server error',
         status: 'error'
     });
- });
+});
 
 //Start the server
 const PORT = process.env.PORT || 5000;
