@@ -158,7 +158,30 @@ const updateAlbum =  asyncHandler(async (req, res) => {
 //@route - DELETE /api/albums/:id
 //@Access - Private/Admin
 
-const deleteAlbum = asyncHandler(async (req, res) => {});
+const deleteAlbum = asyncHandler(async (req, res) => {
+
+    const album = await Album.findById(req.params.id);
+    if(!album) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("Album Not Found!");
+    }
+
+    // Remove album from artist's albums
+    await Artist.updateOne(
+        {_id: album.artist },
+        { $pull: {albums: album._id }}
+    );
+
+    // Update Songs to remove album reference
+    await Song.updateMany(
+        { album: album._id },
+        { $unset: { album: 1 }}
+    );
+    await album.deleteOne();
+    res.status(StatusCodes.OK).json({
+        message: "Album removed"
+    });
+});
 
 //@desc - Add Songs to Album
 //@route - PUT /api/albums/:id/add-songs
