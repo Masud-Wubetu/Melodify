@@ -115,7 +115,16 @@ const getAlbums = asyncHandler(async (req, res) => {
 //@route - GET /api/albums/:id
 //@Access - Public
 
-const getAlbumById = asyncHandler(async (req, res) => {});
+const getAlbumById = asyncHandler(async (req, res) => {
+    const album = await Album.findById(req.params.id)
+        .populate("artist", "name image bio");
+    if(album) {
+        res.status(StatusCodes.OK).json(album);
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Album Not found');
+    }
+});
 
 //@desc - Update Album details
 //@route - PUT /api/albums/:id
