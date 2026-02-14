@@ -49,7 +49,7 @@ const createArtist = asyncHandler(async (req, res) => {
 });
 
 //@desc - get all Artists with filtering and pagination
-//@route - GET/api/artist?genre=Rock 
+//@route - GET /api/artist?genre=Rock&search=dark&page=1&limit=10
 //@Access - Public
 
 const getArtists = asyncHandler(async (req, res) => {
