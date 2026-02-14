@@ -111,7 +111,7 @@ const getAlbums = asyncHandler(async (req, res) => {
     });
 });
 
-//@desc - Get albums by id 
+//!@desc - Get albums by id 
 //@route - GET /api/albums/:id
 //@Access - Public
 
@@ -130,7 +130,29 @@ const getAlbumById = asyncHandler(async (req, res) => {
 //@route - PUT /api/albums/:id
 //@Access - Private/Admin
 
-const updateAlbum = asyncHandler(async (req, res) => {});
+const updateAlbum =  asyncHandler(async (req, res) => {
+    const { title, releaseDate, genre, description, isExplicit } = req.body;
+    const album = await Album.findById(req.params.id);
+    if(!album) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Album Not Found');
+    }
+    // Update Artist details
+    album.title = title || album.title;
+    album.releaseDate = releaseDate || album.releaseDate ;
+    album.genre = genre || album.genre;
+    album.description = description || album.description;
+    album.isExplicit = isExplicit !== undefined ? isExplicit === 'true' : album.isExplicit;
+
+    // Update image if provided
+    if(req.file) {
+        const result = await uploadToCloudinary(req.file.path, 'melodify/albums');
+        album.coverImage = result.secure_url;
+    }
+    // reSave
+    const updatedAlbum = await album.save();
+    res.status(StatusCodes.OK).json(updatedAlbum);
+});
 
 //@desc - Delete Album
 //@route - DELETE /api/albums/:id
