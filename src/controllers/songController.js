@@ -128,6 +128,10 @@ const getSongById = asyncHandler(async (req, res) => {
         .populate("album", "title coverImage releasedDate")
         .populate("featuredArtists", "name image"); 
     if(song) {
+        // Increment plays count 
+        song.plays += 1;
+        await song.save();
+        
         res.status(StatusCodes.OK).json(song);
     } else {
         res.status(StatusCodes.NOT_FOUND);
