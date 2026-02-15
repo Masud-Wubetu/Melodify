@@ -169,6 +169,21 @@ const updateSong =  asyncHandler(async (req, res) => {
     song.isExplicit = isExplicit !== undefined ? isExplicit === 'true' : song.isExplicit;
     song.featuredArtists = featuredArtists ? JSON.parse(featuredArtists) : song.featuredArtists;
 
+    // Update cover image if provided
+    if(req.files && req.files.cover) {
+        const imageResult = await uploadToCloudinary(req.files.cover[0].path, 'melodify/covers');
+        song.coverImage = imageResult.secure_url;
+    }
+
+    // Update audio file if provided
+    if(req.files && req.files.audio) {
+        const audioResult = await uploadToCloudinary(req.files.audio[0].path, 'melodify/songs');
+        song.audioUrl = audioResult.secure_url;
+    }
+
+    const updatedSong = await song.save();
+    res.status(StatusCodes.OK).json(updatedSong);
+
 });
 
 //@desc - Delete Song
