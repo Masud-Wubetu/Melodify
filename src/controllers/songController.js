@@ -9,8 +9,60 @@ const  uploadToCloudinary = require('../utils/cloudinaryUpload')
 //@route - POST /api/songs
 //@Access - Private/Admin
 
-const createSong =  asyncHandler(async (req, res) => {});
+const createSong =  asyncHandler(async (req, res) => {
+    const { title,
+            artistId,
+            albumId, 
+            duration, 
+            genre, 
+            lyrics, 
+            isExplicit, 
+            featuredArtists } = req.body;
 
+    // Check if artist exists
+    const artist = await Artist.findById(artistId);
+    if(!artist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Artist Not Found');
+    }
+
+    // Check album exists if albumId is provided
+    if(albumId) { 
+        const album = await Album.findById(albumId);
+        if(!album) {
+            res.status(StatusCodes.NOT_FOUND);
+            throw new Error('Album Not Found');
+        }
+    }
+
+    // Upload audio file
+    if(!req.file || !req.files.audio) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Audio is required');
+    }
+    const audioResult = await uploadToCloudinary(req.file.audio[0].path, 'melodify/songs');
+
+    // Upload cover image
+    let coverImageUrl = "";
+    if(req.files && req.files.cover) {
+        const imageResult = uploadToCloudinary(req.files.cover, 'melodify/covers');
+        coverImageUrl = imageResult.secure_url;
+    }
+
+    // Create Song
+    const song = await Song.create({
+            title,
+            artist: artistId,
+            album: albumId || null, 
+            duration,
+            audioUrl: audioResult.secure_url,
+            genre, 
+            lyrics, 
+            isExplicit: isExplicit === 'true', 
+            featuredArtists: featuredArtist ? JSON.parse(featuredArtists) : [], 
+    });
+
+});
 //@desc - get all songs with filtering and pagination
 //@route - GET /api/songs
 //@Access - Public
