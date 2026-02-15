@@ -8,8 +8,11 @@ const  uploadToCloudinary = require('../utils/cloudinaryUpload')
 //@desc - Create new Song
 //@route - POST /api/songs
 //@Access - Private/Admin
+console.log("🔥 createSong route hit!");
+
 
 const createSong =  asyncHandler(async (req, res) => {
+    
     const { title,
             artistId,
             albumId, 
@@ -36,16 +39,16 @@ const createSong =  asyncHandler(async (req, res) => {
     }
 
     // Upload audio file
-    if(!req.file || !req.files.audio) {
+    if(!req.files || !req.files.audio) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Audio is required');
     }
-    const audioResult = await uploadToCloudinary(req.file.audio[0].path, 'melodify/songs');
+    const audioResult = await uploadToCloudinary(req.files.audio[0].path, 'melodify/songs');
 
     // Upload cover image
     let coverImageUrl = "";
     if(req.files && req.files.cover) {
-        const imageResult = uploadToCloudinary(req.files.cover, 'melodify/covers');
+        const imageResult = await uploadToCloudinary(req.files.cover[0].path, 'melodify/covers');
         coverImageUrl = imageResult.secure_url;
     }
 
@@ -59,22 +62,22 @@ const createSong =  asyncHandler(async (req, res) => {
             genre, 
             lyrics, 
             isExplicit: isExplicit === 'true', 
-            featuredArtists: featuredArtist ? JSON.parse(featuredArtists) : [], 
+            featuredArtists: featuredArtists ? JSON.parse(featuredArtists) : [], 
     });
 
+
     // Add song to artist's songs
-    await artist.songs.push(song_.id);
+    artist.songs.push(song._id);
     await artist.save();
 
     //add song to album if albumId is provided
     if(albumId) {
         const album = await Album.findById(albumId);
-        await album.songs.push(song._id);
+        album.songs.push(song._id);
         await album.save();
     }
 
     res.status(StatusCodes.CREATED).json(song); 
-
 
 });
 //@desc - get all songs with filtering and pagination

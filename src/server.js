@@ -12,6 +12,7 @@ const { StatusCodes } = require('http-status-codes')
 const userRouter = require('./routes/userRoutes');
 const artistRouter = require('./routes/artistRoutes');
 const albumRouter = require('./routes/albumRoutes');
+const songRouter = require('./routes/songRoutes');
 
 // Initialize app
 const app = express();
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use('/api/users', userRouter);
 app.use('/api/artists', artistRouter);
 app.use('/api/albums', albumRouter);
+app.use('/api/songs', songRouter);
 
 // Error handling
 //404
