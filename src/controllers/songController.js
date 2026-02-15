@@ -63,6 +63,7 @@ const createSong =  asyncHandler(async (req, res) => {
             lyrics, 
             isExplicit: isExplicit === 'true', 
             featuredArtists: featuredArtists ? JSON.parse(featuredArtists) : [], 
+            coverImage: coverImageUrl,
     });
 
 
