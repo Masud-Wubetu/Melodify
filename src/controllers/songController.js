@@ -131,7 +131,7 @@ const getSongById = asyncHandler(async (req, res) => {
         // Increment plays count 
         song.plays += 1;
         await song.save();
-        
+
         res.status(StatusCodes.OK).json(song);
     } else {
         res.status(StatusCodes.NOT_FOUND);
@@ -143,7 +143,33 @@ const getSongById = asyncHandler(async (req, res) => {
 //@route - PUT /api/songs/:id
 //@Access - Private/Admin
 
-const updateSong =  asyncHandler(async (req, res) => {});
+const updateSong =  asyncHandler(async (req, res) => {
+    const { title,
+            artistId,
+            albumId, 
+            duration, 
+            genre, 
+            lyrics, 
+            isExplicit, 
+            featuredArtists } = req.body;
+
+    const song = await Song.findById(req.params.id);
+    if(!song) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Song not found');
+    }
+
+    // Update Song details
+    song.title = title || song.title;
+    song.album = albumId || song.album;
+    song.genre = genre || song.genre;
+    song.lyrics = lyrics || song.lyrics;
+    song.artist = artistId || song.artist;
+    song.duration = duration || song.duration;
+    song.isExplicit = isExplicit !== undefined ? isExplicit === 'true' : song.isExplicit;
+    song.featuredArtists = featuredArtists ? JSON.parse(featuredArtists) : song.featuredArtists;
+
+});
 
 //@desc - Delete Song
 //@route - DELETE /api/songs/:id
