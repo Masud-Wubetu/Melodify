@@ -122,7 +122,18 @@ const getSongs = asyncHandler(async (req, res) => {
 //@route - GET /api/songs/:id
 //@Access - Public
 
-const getSongById =  asyncHandler(async (req, res) => {});
+const getSongById = asyncHandler(async (req, res) => {
+    const song = await Song.findById(req.params.id)
+        .populate("artist", "name image bio")
+        .populate("album", "title coverImage releasedDate")
+        .populate("featuredArtists", "name image"); 
+    if(song) {
+        res.status(StatusCodes.OK).json(song);
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Song Not found');
+    }
+});
 
 //@desc - update song detail
 //@route - PUT /api/songs/:id
