@@ -62,6 +62,20 @@ const createSong =  asyncHandler(async (req, res) => {
             featuredArtists: featuredArtist ? JSON.parse(featuredArtists) : [], 
     });
 
+    // Add song to artist's songs
+    await artist.songs.push(song_.id);
+    await artist.save();
+
+    //add song to album if albumId is provided
+    if(albumId) {
+        const album = await Album.findById(albumId);
+        await album.songs.push(song._id);
+        await album.save();
+    }
+
+    res.status(StatusCodes.CREATED).json(song); 
+
+
 });
 //@desc - get all songs with filtering and pagination
 //@route - GET /api/songs
