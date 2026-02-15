@@ -8,8 +8,6 @@ const  uploadToCloudinary = require('../utils/cloudinaryUpload')
 //@desc - Create new Song
 //@route - POST /api/songs
 //@Access - Private/Admin
-console.log("🔥 createSong route hit!");
-
 
 const createSong =  asyncHandler(async (req, res) => {
     
@@ -81,11 +79,44 @@ const createSong =  asyncHandler(async (req, res) => {
     res.status(StatusCodes.CREATED).json(song); 
 
 });
+
 //@desc - get all songs with filtering and pagination
-//@route - GET /api/songs
+//@route - GET /api/songs?genre=quran&artist=87235&search=comfort&page=1&limit=10
 //@Access - Public
 
-const getSongs =  asyncHandler(async (req, res) => {});
+const getSongs = asyncHandler(async (req, res) => {
+    const { genre, artist, search, page=1, limit=10 } = req.query;
+    // Build filter object
+    const filter = {};
+    if(genre) filter.genre = genre;
+    if(artist) filter.artist = artist;
+
+    if(search) {
+        filter.$or = [
+            { title: { $regex: search, $options: 'i' } },
+            { genre: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    // Count total album with the filter
+    const count = await Song.countDocuments(filter);
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Get artists
+    const songs = await Song.find(filter)
+        .sort({ releaseDate: -1 })
+        .limit(parseInt(limit))
+        .skip(skip)
+        .populate("artist", "name image")
+        .populate("album", "title coverImage")
+        .populate("artist", "name");
+    res.status(StatusCodes.OK).json({
+        songs,
+        page: parseInt(page),
+        pages: Math.ceil(count / parseInt(limit)),
+        totalSong: count,
+    });
+});
 
 //@desc - get a Song by Id
 //@route - GET /api/songs/:id
