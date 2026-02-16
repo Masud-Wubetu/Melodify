@@ -238,7 +238,18 @@ const getTopSongs =  asyncHandler(async (req, res) => {
 //@route - GET /api/songs/new-releases?limit=5
 //@Access - Public
 
-const getNewReleases =  asyncHandler(async (req, res) => {});
+const getNewReleases =  asyncHandler(async (req, res) => {
+    const { limit } = req.query;
+    // Empty filter to get all songs
+    const filter = {}
+    const songs = await Song.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .populate('artist', 'name image')
+        .populate('artist', 'title coverImage');
+
+    res.status(StatusCodes.OK).json(songs);
+});
 
 module.exports = {
     createSong,
