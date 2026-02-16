@@ -203,7 +203,18 @@ const deleteSong =  asyncHandler(async (req, res) => {
         { $pull: { songs: song._id }}
     );
 
-    
+    // Remove song from album's songs
+    if (song.album) {
+        await Album.updateOne(
+        { _id: song.album },
+        { $pull: { songs: song._id }}
+    );
+    }
+
+    await song.deleteOne();
+    res.status(StatusCodes.OK).json({
+        message: 'song removed'
+    });
 });
 
 //@desc - get top songs by plays
