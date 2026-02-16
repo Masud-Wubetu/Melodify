@@ -190,7 +190,21 @@ const updateSong =  asyncHandler(async (req, res) => {
 //@route - DELETE /api/songs/:id
 //@Access - Private/Admin
 
-const deleteSong =  asyncHandler(async (req, res) => {});
+const deleteSong =  asyncHandler(async (req, res) => {
+    const song = await Song.findById(req.params.id);
+    if(!song) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Song not found');
+    }
+
+    // Remove song from artist's songs
+    await Artist.updateOne(
+        { _id: song.artist },
+        { $pull: { songs: song._id }}
+    );
+
+    
+});
 
 //@desc - get top songs by plays
 //@route - GET /api/songs/top?limit=5
