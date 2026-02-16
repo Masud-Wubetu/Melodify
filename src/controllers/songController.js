@@ -193,7 +193,7 @@ const updateSong =  asyncHandler(async (req, res) => {
 const deleteSong =  asyncHandler(async (req, res) => {
     const song = await Song.findById(req.params.id);
     if(!song) {
-        res.status(StatusCodes.NOT_FOUND);
+        res.status(StatusCodes.NOT_FOUND); 
         throw new Error('Song not found');
     }
 
@@ -221,7 +221,18 @@ const deleteSong =  asyncHandler(async (req, res) => {
 //@route - GET /api/songs/top?limit=5
 //@Access - Public
 
-const getTopSongs =  asyncHandler(async (req, res) => {});
+const getTopSongs =  asyncHandler(async (req, res) => {
+    const { limit } = req.query;
+    // Empty filter to get all songs
+    const filter = {}
+    const songs = await Song.find(filter)
+        .sort({ plays: -1 })
+        .limit(limit)
+        .populate('artist', 'name image')
+        .populate('artist', 'title coverImage');
+
+    res.status(StatusCodes.OK).json(songs);
+});
 
 //@desc - get new releases (recently added songs)
 //@route - GET /api/songs/new-releases?limit=5
