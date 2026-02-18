@@ -1,0 +1,87 @@
+const asyncHandler = require('express-async-handler');
+const { StatusCodes } = require('http-status-codes');
+const Artist = require('../models/Artist');
+const Playlist = require('../models/Playlist');
+const Song = require('../models/Song');
+const  uploadToCloudinary = require('../utils/cloudinaryUpload')
+
+//!@desc - Create new Playlist
+//@route - POST /api/playlists
+//@Access - Private
+
+const createPlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Get Playlists with filtering and pagination
+//@route - GET /api/playlists?search=summer&page=1&limit=10
+//@Access - Public
+
+const getPlaylists  = asyncHandler(async (req, res) => {});
+
+//!@desc - get user's Playlist
+//@route - GET /api/playlists/user/me
+//@Access - Private
+
+const getUserPlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Get playlist by Id
+//@route - GET /api/playlists/:id
+//@Access - Private
+
+const getPlaylistById  = asyncHandler(async (req, res) => {});
+
+//!@desc - Update Playlist
+//@route - PUT /api/playlists/:id
+//@Access - Private
+
+const updatePlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Delete Playlist
+//@route - DELETE /api/playlist/:id
+//@Access - Private
+
+const deletePlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Add songs to Playlist
+//@route - PUT /api/playlists/:id/add-songs
+//@Access - Private
+
+const addSongsToPlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Remove song from Playlist
+//@route - PUT /api/playlists/:id/remove-song/:songId
+//@Access - Private
+
+const removeSongFromPlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Add collaborator to Playlist
+//@route - POST /api/playlists/:id/add-collaborator
+//@Access - Private
+
+const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - remove collaborator from Playlist
+//@route - PUT /api/playlists/:id/remove-collabborator
+//@Access - Private
+
+const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {});
+
+//!@desc - Add collaborator to Playlist
+//@route - GET /api/playlists/featured?limit=10
+//@Access - Private
+
+const getFeaturedPlaylists   = asyncHandler(async (req, res) => {});
+
+module.exports = {
+    createPlaylist,
+    getPlaylists,
+    getUserPlaylist,
+    getPlaylistById,
+    updatePlaylist,
+    deletePlaylist,
+    addSongsToPlaylist,
+    removeSongFromPlaylist,
+    addCollaboratorToPlaylist,
+    removeCollaboratorToPlaylist,
+    getFeaturedPlaylists,
+
+}
