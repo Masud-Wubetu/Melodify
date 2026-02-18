@@ -21,7 +21,7 @@ const getPlaylists  = asyncHandler(async (req, res) => {});
 //@route - GET /api/playlists/user/me
 //@Access - Private
 
-const getUserPlaylist  = asyncHandler(async (req, res) => {});
+const getUserPlaylists = asyncHandler(async (req, res) => {});
 
 //!@desc - Get playlist by Id
 //@route - GET /api/playlists/:id
@@ -74,7 +74,7 @@ const getFeaturedPlaylists   = asyncHandler(async (req, res) => {});
 module.exports = {
     createPlaylist,
     getPlaylists,
-    getUserPlaylist,
+    getUserPlaylists,
     getPlaylistById,
     updatePlaylist,
     deletePlaylist,
