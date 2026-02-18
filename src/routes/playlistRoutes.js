@@ -10,7 +10,7 @@ const {
     removeSongFromPlaylist,
     addCollaboratorToPlaylist,
     removeCollaboratorToPlaylist,
-    getFeaturedPlaylists,} = require('../controllers/platlistController');
+    getFeaturedPlaylists,} = require('../controllers/playlistController');
 const { protect, isAdmin }= require('../middlewares/auth');
 const upload = require('../middlewares/upload')
 const playlistRouter = express.Router(); 

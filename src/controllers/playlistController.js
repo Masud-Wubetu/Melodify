@@ -9,7 +9,53 @@ const  uploadToCloudinary = require('../utils/cloudinaryUpload')
 //@route - POST /api/playlists
 //@Access - Private
 
-const createPlaylist  = asyncHandler(async (req, res) => {});
+const createPlaylist  = asyncHandler(async (req, res) => {
+    const { name, description, isPublic } = req.body;
+    //Validations
+    if(!name || !description) {
+        req.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Name and Description are required');
+    }
+
+    if(name.lenght < 3 && name.lenght > 50) {
+        req.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Name must be between 3 and 50 characters');
+    }
+
+    if(description.length < 10 && description.length > 200) {
+        req.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Desc ription must be between 10 and 20 0 characters');
+    }
+
+    // Check if playlist already exist
+    const existingPlaylist = await Playlist.findOne({
+        name,
+        creator: req.user._id,
+    }); 
+
+    if(existingPlaylist) {
+        req.status(StatusCodes.BAD_REQUEST);
+        throw new Error('playlist with this name already exist');
+    }
+
+    // Upload playlist cover image if provided
+     let coverImageUrl = '';
+     if(req.file) {
+        const result = await uploadToCloudinary(req.file.path, 'melodify/playlists');
+        coverImageUrl = result.secure_url; 
+     }
+
+     // Create the playlist
+     const playlist = await Playlist.create({
+        name,
+        description,
+        creator: req.user._id,
+        coverImage: coverImageUrl || undefined,
+        isPublic: isPublic === 'true'
+     });
+
+     res.status(StatusCodes.CREATED).json(playlist);
+});
 
 //!@desc - Get Playlists with filtering and pagination
 //@route - GET /api/playlists?search=summer&page=1&limit=10
