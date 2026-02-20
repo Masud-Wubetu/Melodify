@@ -61,7 +61,19 @@ const createPlaylist  = asyncHandler(async (req, res) => {
 //@route - GET /api/playlists?search=summer&page=1&limit=10
 //@Access - Public
 
-const getPlaylists  = asyncHandler(async (req, res) => {});
+const getPlaylists  = asyncHandler(async (req, res) => {
+    const { search, page = 1, limit = 10 } = req.query;
+    // Build filter object
+    const filter = { isPublic: true }; // only public playlists
+    if(search) {
+        filter.$or = [
+            { name: { $regex: search, $options: 'i' }},
+            { description: { $regex: search, $options: 'i' }},
+        ]; 
+    }
+
+ 
+});
 
 //!@desc - get user's Playlist
 //@route - GET /api/playlists/user/me
