@@ -5,7 +5,7 @@ const Playlist = require('../models/Playlist');
 const Song = require('../models/Song');
 const  uploadToCloudinary = require('../utils/cloudinaryUpload')
 
-//!@desc - Create new Playlist
+//@desc - Create new Playlist
 //@route - POST /api/playlists
 //@Access - Private
 
@@ -57,7 +57,7 @@ const createPlaylist  = asyncHandler(async (req, res) => {
      res.status(StatusCodes.CREATED).json(playlist);
 });
 
-//!@desc - Get Playlists with filtering and pagination
+//@desc - Get Playlists with filtering and pagination
 //@route - GET /api/playlists?search=summer&page=1&limit=10
 //@Access - Public
 
@@ -96,7 +96,18 @@ const getPlaylists  = asyncHandler(async (req, res) => {
 //@route - GET /api/playlists/user/me
 //@Access - Private
 
-const getUserPlaylists = asyncHandler(async (req, res) => {});
+const getUserPlaylists = asyncHandler(async (req, res) => {
+    const playlists = await Playlist.find({
+        $or: [
+            { creator: req.user._id },
+            { collaborators: req.user._id}
+        ],
+    })
+        .sort({ createdAt: -1 })
+        .populate('creator', 'name profilePicture'); 
+    res.status(StatusCodes.OK).json(playlists);
+
+});
 
 //!@desc - Get playlist by Id
 //@route - GET /api/playlists/:id
