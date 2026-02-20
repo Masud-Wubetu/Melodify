@@ -72,11 +72,24 @@ const getPlaylists  = asyncHandler(async (req, res) => {
         ]; 
     }
 
-    // Count total albums with filter
-    const count = await Album.countDocuments(filter);
+    // Count total playlists  with filter
+    const count = await Playlist.countDocuments(filter);
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Get playlists
+    const playlists = await Playlist.find(filter)
+        .sort({ followers: -1 })
+        .limit(parseInt(limit))
+        .skip(skip)
+        .populate("creator", "name profilePicture")
+        .populate("collaborators", "name profilePicture")
+    res.status(StatusCodes.OK).json({
+        playlists,
+        page: parseInt(page),
+        pages: Math.ceil(count / parseInt(limit)),
+        totalPlaylist: count,
  
+    });
 });
 
 //!@desc - get user's Playlist
