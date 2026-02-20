@@ -109,7 +109,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - Get playlist by Id
+//@desc - Get playlist by Id
 //@route - GET /api/playlists/:id
 //@Access - Private
 
@@ -136,7 +136,23 @@ const getPlaylistById  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id
 //@Access - Private
 
-const updatePlaylist  = asyncHandler(async (req, res) => {});
+const updatePlaylist  = asyncHandler(async (req, res) => {
+    const { name, description, isPublic } = req.body;
+    const playlist = await Playlist.findById(req.params.id);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND );
+        throw new Error('Playlist Not Found')
+    }
+    // Check if current user is creator or collaborator
+    if (
+        !playlist.creator.equals(req.user._id) || 
+        !playlist.collaborators.some((collab) => collab.equals(req.user._id))
+    ) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('Not authorized to update this Playlist');
+    }
+
+});
 
 //!@desc - Delete Playlist
 //@route - DELETE /api/playlist/:id
