@@ -72,6 +72,8 @@ const getPlaylists  = asyncHandler(async (req, res) => {
         ]; 
     }
 
+    // Count total albums with filter
+    const count = await Album.countDocuments(filter);
  
 });
 
