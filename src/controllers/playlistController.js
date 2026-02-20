@@ -92,7 +92,7 @@ const getPlaylists  = asyncHandler(async (req, res) => {
     });
 });
 
-//!@desc - get user's Playlist
+//@desc - get user's Playlist
 //@route - GET /api/playlists/user/me
 //@Access - Private
 
@@ -113,7 +113,24 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 //@route - GET /api/playlists/:id
 //@Access - Private
 
-const getPlaylistById  = asyncHandler(async (req, res) => {});
+const getPlaylistById  = asyncHandler(async (req, res) => {
+    const playlist = await Playlist.findById(req.params.id)
+        .populate("creator", "name profilePicture")
+        .populate("collaborators", "name profilePicture");
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Playlist Not Found');
+    }
+
+    // Check if playlist is private and current user not the creator or collaborator
+    if (!playlist.isPublic && !(req.user && (playlist.creator.equals(req.user._id) || 
+    playlist.collaborators.some((collab) => collab.equals(req.user._id))))) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('This playlist is Private');
+    }
+    res.status(StatusCodes.OK).json(playlist);
+
+});
 
 //!@desc - Update Playlist
 //@route - PUT /api/playlists/:id
