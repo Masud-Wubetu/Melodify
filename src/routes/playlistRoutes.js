@@ -23,7 +23,7 @@ playlistRouter.get('/:id', getPlaylistById);
 //Private routes
 playlistRouter.post('/', protect, upload.single('coverImage'), createPlaylist );
 playlistRouter.get ('/user/me', protect, getUserPlaylists);
-playlistRouter.put('/:id', protect, updatePlaylist);
+playlistRouter.put('/:id', protect, upload.single('coverImage'), updatePlaylist);
 playlistRouter.delete ('/:id', protect, deletePlaylist);
 playlistRouter.put('/:id/add-songs', protect, addSongsToPlaylist);
 playlistRouter.put('/:id/add-collaborator', protect, addCollaboratorToPlaylist);

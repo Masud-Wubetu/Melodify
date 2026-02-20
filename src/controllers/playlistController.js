@@ -3,7 +3,8 @@ const { StatusCodes } = require('http-status-codes');
 const Artist = require('../models/Artist');
 const Playlist = require('../models/Playlist');
 const Song = require('../models/Song');
-const  uploadToCloudinary = require('../utils/cloudinaryUpload')
+const  uploadToCloudinary = require('../utils/cloudinaryUpload');
+const upload = require('../middlewares/upload');
 
 //@desc - Create new Playlist
 //@route - POST /api/playlists
@@ -155,6 +156,20 @@ const updatePlaylist  = asyncHandler(async (req, res) => {
     // Update the plyalists field
     playlist.name = name ||  playlist.name;
     playlist.description = description || playlist.description;
+    // Only creator can change privacy settings
+    if(playlist.creator.equals(req.user._id)) {
+        playlist.isPublic = 
+            isPublic !== undefined ? isPublic === 'true' : playlist.isPublic;
+    }
+
+    // Update cover image if provided
+    if(req.file) {
+        const result = await uploadToCloudinary(req.file.path, 'melodify/playlists');
+        playlist.coverImage = result.secure_url;
+    }
+
+    const updatedPlaylist = await playlist.save();
+    res.status(StatusCodes.OK).json(updatedPlaylist);
 
 });
 
