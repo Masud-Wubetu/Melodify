@@ -152,6 +152,10 @@ const updatePlaylist  = asyncHandler(async (req, res) => {
         throw new Error('Not authorized to update this Playlist');
     }
 
+    // Update the plyalists field
+    playlist.name = name ||  playlist.name;
+    playlist.description = description || playlist.description;
+
 });
 
 //!@desc - Delete Playlist
