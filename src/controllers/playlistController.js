@@ -196,11 +196,50 @@ const deletePlaylist  = asyncHandler(async (req, res) => {
     });
 });
 
-//!@desc - Add songs to Playlist
+//@desc - Add songs to Playlist
 //@route - PUT /api/playlists/:id/add-songs
 //@Access - Private
 
-const addSongsToPlaylist  = asyncHandler(async (req, res) => {});
+const addSongsToPlaylist  = asyncHandler(async (req, res) => {
+    const { songIds } = req.body;
+    if(!songIds || !Array.isArray(songIds)) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Song Ids are required'); 
+    }
+
+    // Find the Playlist
+    const playlist = await Playlist.findById(req.params.id);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("Playlist Not Found"); 
+    }
+    
+    if(!playlist.creator.equals(req.user._id) && !playlist.
+    collaborators.some((collab) => collab.equals(req.user._id))) {
+         res.status(StatusCodes.FORBIDDEN);
+        throw new Error("Not authorized to modify this playlist "); 
+    }
+
+    // Add songs to playlist
+    for(const songId of songIds) {
+        // Check if song exist
+        const song = await Song.findById(songId);
+        if(!song) {
+            continue; // Skip if song doesn't exist 
+        }
+
+        // Check if song already in playlist
+        if(playlist.songs.includes(songId)) {
+            continue; // Skip if song is already in playlist
+        }
+
+        playlist.songs.push(songId); 
+    }
+
+    await playlist.save();
+    res.status(StatusCodes.OK).json(playlist);
+
+});
 
 //!@desc - Remove song from Playlist
 //@route - PUT /api/playlists/:id/remove-song/:songId
