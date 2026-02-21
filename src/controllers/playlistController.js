@@ -133,7 +133,7 @@ const getPlaylistById  = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - Update Playlist
+//@desc - Update Playlist
 //@route - PUT /api/playlists/:id
 //@Access - Private
 
@@ -173,11 +173,28 @@ const updatePlaylist  = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - Delete Playlist
+//@desc - Delete Playlist
 //@route - DELETE /api/playlist/:id
 //@Access - Private
 
-const deletePlaylist  = asyncHandler(async (req, res) => {});
+const deletePlaylist  = asyncHandler(async (req, res) => {
+    const playlist = await Playlist.findById(req.params.id);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("Playlist Not Found"); 
+    }
+
+    // Only creator can delete it's own playlist
+    if(!playlist.creator.equals(req.user._id)) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('Not authorized to delete ths playlist');
+    }
+
+    await playlist.deleteOne();
+    res.status(StatusCodes.OK).json({
+        message: 'Playlist removed'
+    });
+});
 
 //!@desc - Add songs to Playlist
 //@route - PUT /api/playlists/:id/add-songs
