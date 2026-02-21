@@ -245,7 +245,34 @@ const addSongsToPlaylist  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id/remove-song/:songId
 //@Access - Private
 
-const removeSongFromPlaylist  = asyncHandler(async (req, res) => {});
+const removeSongFromPlaylist  = asyncHandler(async (req, res) => {
+    // Find the Playlist
+    const playlist = await Playlist.findById(req.params.id);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("Playlist Not Found"); 
+    }
+
+    // Check if current user is reator or collaborator
+    if(!playlist.creator.equals(req.user._id) && !playlist.
+    collaborators.some((collab) => collab.equals(req.user._id))) {
+         res.status(StatusCodes.FORBIDDEN);
+        throw new Error("Not authorized to modify this playlist "); 
+    }
+
+    const songId = req.params.songId;
+    // Check is song is in the playlist
+    if(!playlist.songs.includes(songId)) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error("Song is not in the playlist"); 
+    }
+
+    playlist.songs = plau=ylist.songs.filter((id) => id.toString() !== songId);
+    await playlist.save();
+    res.status(StatusCodes.OK).json({
+        message: 'Song removed from Playlist'
+    });
+});
 
 //!@desc - Add collaborator to Playlist
 //@route - POST /api/playlists/:id/add-collaborator
