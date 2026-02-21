@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const Artist = require('../models/Artist');
+const User  = require('../models/User')
 const Playlist = require('../models/Playlist');
 const Song = require('../models/Song');
 const  uploadToCloudinary = require('../utils/cloudinaryUpload');
@@ -241,7 +242,7 @@ const addSongsToPlaylist  = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - Remove song from Playlist
+//@desc - Remove song from Playlist
 //@route - PUT /api/playlists/:id/remove-song/:songId
 //@Access - Private
 
@@ -278,7 +279,45 @@ const removeSongFromPlaylist  = asyncHandler(async (req, res) => {
 //@route - POST /api/playlists/:id/add-collaborator
 //@Access - Private
 
-const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {});
+const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
+    const userId = req.body.userId;
+    if(!userId) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error("User Id is required"); 
+    }
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if(!user) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("User Not Found"); 
+    }
+
+     // Find the Playlist
+    const playlist = await Playlist.findById(req.params.id);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("Playlist Not Found"); 
+    }
+
+    // Only creator can add collaborator
+    if(!playlist.creator.equals(req.user._id)) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('Only playlist creator can add collaborators ');
+    }
+
+    // Check if user is already collaborator
+    if(playlist.collaborators.includes(userId)) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error("User is alread a collaborator");
+    }
+
+    // Add user to collaborator
+    playlist.collaborators.push(userId);
+    await playlist.save();
+    res.status(StatusCodes.OK).json(playlist); 
+
+});
 
 //!@desc - remove collaborator from Playlist
 //@route - PUT /api/playlists/:id/remove-collabborator
