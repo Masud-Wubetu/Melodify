@@ -1,6 +1,6 @@
 const express = require('express');
 const userRouter = express.Router();
-const { registerUser, loginUser, getUserProfile, updateUserProfile, toggleLikeSong } = require('../controllers/userController');
+const { registerUser, loginUser, getUserProfile, updateUserProfile, toggleLikeSong, toggleFollowArtist } = require('../controllers/userController');
 const { protect } = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
 
@@ -12,6 +12,7 @@ userRouter.post('/login', loginUser);
 userRouter.get('/profile', protect, getUserProfile);
 userRouter.put('/profile', protect, upload.single("profilePicture"), updateUserProfile);
 userRouter.put('/like-song/:id', protect, toggleLikeSong );
+userRouter.put('/follow-artist/:id', protect, toggleFollowArtist );
 
 
 module.exports = userRouter;
