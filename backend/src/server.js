@@ -8,6 +8,7 @@ require('./models/Playlist');
 
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const { StatusCodes } = require('http-status-codes')
 const userRouter = require('./routes/userRoutes');
 const artistRouter = require('./routes/artistRoutes');
@@ -30,6 +31,12 @@ mongoose
 
 // pass incoming data
 app.use(express.json());
+
+// Allow requests from frontend
+app.use(cors({
+  origin: "http://localhost:5173", // frontend URL
+  credentials: true // allows cookies/auth if needed
+}));
 
 // Routes
 app.use('/api/users', userRouter);
