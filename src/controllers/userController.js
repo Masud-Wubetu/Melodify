@@ -201,7 +201,7 @@ const toggleFollowArtist =  asyncHandler(async (req, res) => {
     });
 
 });
-//!Toggle follow playlist
+//Toggle follow playlist
 const toggleFollowPlaylist =  asyncHandler(async (req, res) => {
     const playlistId = req.params.id;
 
@@ -243,8 +243,6 @@ const toggleFollowPlaylist =  asyncHandler(async (req, res) => {
     });
 
 });
-//!get users
-const getUsers =  asyncHandler(async (req, res) => {});
 
 module.exports = {
     registerUser,
