@@ -1,7 +1,8 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const User = require('../models/User');
-const Artist = require('../models/Artist')
+const Artist = require('../models/Artist');
+const Playlist = require('../models/Playlist');
 const Song = require('../models/Song');
 const generateToken = require('../utils/generateToken');
 const  uploadToCloudinary  = require('../utils/cloudinaryUpload');
@@ -146,7 +147,7 @@ const toggleLikeSong =  asyncHandler(async (req, res) => {
         // Remove song to liked songs
         user.likedSongs.splice(songIndex, 1);
 
-        // Decrement likes count (ensure it doesn't go below 0)
+        // Decrement like's count (ensure it doesn't go below 0)
         if(song.likes > 0) {
             song.likes -= 1;
         }
@@ -182,7 +183,6 @@ const toggleFollowArtist =  asyncHandler(async (req, res) => {
 
         // Increase the followers count
         artist.followers += 1;
-        await artist.save();
 
     } else {
         // Remove artist from followed artists
@@ -197,12 +197,52 @@ const toggleFollowArtist =  asyncHandler(async (req, res) => {
     await Promise.all([user.save(), artist.save()]);
     res.status(StatusCodes.OK).json({
         followedArtists: user.followedArtists,
-        message: songIndex === -1 ? 'Artist followed' : 'Artist unfollowed'
+        message: artistIndex === -1 ? 'Artist followed' : 'Artist unfollowed'
     });
 
 });
 //!Toggle follow playlist
-const toggleFollowPlaylist =  asyncHandler(async (req, res) => {});
+const toggleFollowPlaylist =  asyncHandler(async (req, res) => {
+    const playlistId = req.params.id;
+
+    const playlist = await Playlist.findById(playlistId);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Playlist Not Found');
+    }
+
+    const user = await User.findById(req.user._id);
+    if(!user) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('User Not Found');
+    }
+
+    // Check if playlist is already followed
+    const playlistIndex = user.followedPlaylists.indexOf(playlistId);
+     if(playlistIndex === -1) {
+        // Add playlist to followed playlist
+        user.followedPlaylists.push(playlistId);
+
+        // Increase the followers count
+        playlist.followers += 1;
+
+    } else {
+        // Remove playlist from followed playlists
+        user.followedPlaylists.splice(playlistIndex, 1);
+
+        // Decrement follower's count (ensure it doesn't go below 0)
+        if(playlist.followers > 0) {
+            playlist.followers -= 1;
+        }
+    }
+
+    await Promise.all([user.save(), playlist.save()]);
+    res.status(StatusCodes.OK).json({
+        followedPlaylists: user.followedPlaylists,
+        message: playlistIndex === -1 ? 'Playlist followed' : 'Playlist unfollowed'
+    });
+
+});
 //!get users
 const getUsers =  asyncHandler(async (req, res) => {});
 
@@ -213,4 +253,5 @@ module.exports = {
     updateUserProfile,
     toggleLikeSong,
     toggleFollowArtist,
+    toggleFollowPlaylist,
 }
