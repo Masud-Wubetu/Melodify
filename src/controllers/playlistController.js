@@ -319,7 +319,7 @@ const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - remove collaborator from Playlist
+//@desc - remove collaborator from Playlist
 //@route - PUT /api/playlists/:id/remove-collabborator
 //@Access - Private
 
@@ -358,11 +358,20 @@ const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - Add collaborator to Playlist
+//!@desc - get Featured Playlists(high follower count)
 //@route - GET /api/playlists/featured?limit=10
 //@Access - Private
 
-const getFeaturedPlaylists   = asyncHandler(async (req, res) => {});
+const getFeaturedPlaylists   = asyncHandler(async (req, res) => {
+    const { limit = 5 } = req.query;
+    const filter = { isPublic: true };
+    const playlists = await Playlist.find(filter)
+        .limit(parseInt(limit))
+        .sort({ followers: -1 })
+        .populate('creator', 'name profilePicture')
+    res.status(StatusCodes.OK).json(playlists);  
+
+});
 
 module.exports = {
     createPlaylist,
