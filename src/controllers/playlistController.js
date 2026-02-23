@@ -275,7 +275,7 @@ const removeSongFromPlaylist  = asyncHandler(async (req, res) => {
     });
 });
 
-//!@desc - Add collaborator to Playlist
+//@desc - Add collaborator to Playlist
 //@route - POST /api/playlists/:id/add-collaborator
 //@Access - Private
 
@@ -323,7 +323,40 @@ const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id/remove-collabborator
 //@Access - Private
 
-const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {});
+const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
+    const userId = req.body.userId;
+    if(!userId) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error("User Id is required"); 
+    }
+
+     // Find the Playlist
+    const playlist = await Playlist.findById(req.params.id);
+    if(!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error("Playlist Not Found"); 
+    }
+
+    // Only creator can remove collaborator
+    if(!playlist.creator.equals(req.user._id)) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('Only playlist creator can remove collaborators ');
+    }
+
+     // Check if user is a collaborator
+    if(!playlist.collaborators.includes(userId)) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error("User is not  a collaborator");
+    }
+
+    // remove user from collaborators
+    playlist.collaborators = playlist.collaborators.filter(
+        (id) => id.toString() !== userId 
+    );
+    await playlist.save();
+    res.status(StatusCodes.OK).json(playlist);
+
+});
 
 //!@desc - Add collaborator to Playlist
 //@route - GET /api/playlists/featured?limit=10
