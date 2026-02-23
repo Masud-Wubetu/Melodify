@@ -358,7 +358,7 @@ const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
 
 });
 
-//!@desc - get Featured Playlists(high follower count)
+//@desc - get Featured Playlists(high follower count)
 //@route - GET /api/playlists/featured?limit=10
 //@Access - Private
 

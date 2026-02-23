@@ -1,8 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const User = require('../models/User');
+const Song = require('../models/Song');
 const generateToken = require('../utils/generateToken');
 const  uploadToCloudinary  = require('../utils/cloudinaryUpload');
+
 
 //@desc - register a new user
 //@route - POST /api/users/register
@@ -83,7 +85,7 @@ const getUserProfile =  asyncHandler(async (req, res) => {
     }
 });
 
-//!update user profile
+//update user profile
 const updateUserProfile =  asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
     const { name, email, password } = req.body;
@@ -115,8 +117,43 @@ const updateUserProfile =  asyncHandler(async (req, res) => {
     }
     
 });
-//!Toggle like song
-const toggleLikeSong =  asyncHandler(async (req, res) => {});
+//Toggle like song
+const toggleLikeSong =  asyncHandler(async (req, res) => {
+    const songId = req.params.id;
+    const user = await User.findById(req.user._id);
+    const song = await Song.findById(songId);
+
+     if(!song) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Song Not Found');
+    }
+
+    if(!user) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('User Not Found');
+    }
+
+    // Check if song is already liked
+    const songIndex = user.likedSongs.indexOf(songId);
+    if(songIndex === -1) {
+        // Add song to liked songs
+        user.likedSongs.push(songId);
+
+        // Increase the song likes count
+        song.likes += 1;
+        await song.save();
+
+    } else {
+        // Remove song to liked songs
+        user.likedSongs.splice(songIndex, 1);
+    }
+
+    await user.save();
+    res.status(StatusCodes.OK).json({
+        likedSongs: user.likedAlbums,
+        message: songIndex === -1 ? 'Song added to liked Songs' : 'Song removed from liked Songs'
+    });
+});
 //!Toggle follow artist
 const toggleFollowArtist =  asyncHandler(async (req, res) => {});
 //!Toggle follow playlist
@@ -129,4 +166,5 @@ module.exports = {
     loginUser,
     getUserProfile,
     updateUserProfile,
+    toggleLikeSong,
 }
