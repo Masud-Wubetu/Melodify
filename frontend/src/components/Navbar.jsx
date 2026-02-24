@@ -1,16 +1,7 @@
 
 export default function Navbar(){
     return (
-        <nav style={{
-            height: "60px",
-            backgroundColor: "#1c1c1c",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 20px",
-            fontWeight: "bold",
-            fontSize: "20px"
-            }}>
+        <nav class="h-[60px] bg-[#282828] text-white felx items-center px-5 font-bold text-[20px]">
                 Melodify
         </nav>
     )

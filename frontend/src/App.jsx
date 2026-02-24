@@ -1,14 +1,18 @@
-import { useState } from 'react'
 import Home from './pages/Home.jsx';
 import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <>
       <Navbar/>
-       <Home/>
+      <div style={{ display: "flex" }}>
+        <Sidebar />
+        <div style={{ flex: 1 }}>
+          <Home />
+        </div>
+      </div>
     </>
   )
 }
