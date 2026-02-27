@@ -3,10 +3,10 @@ export default function Sidebar() {
     <aside class="w-110 rounded-xl bg-[#151212] text-white h-[calc(100vh-60px)] p-5 box-border">
       <div class="flex justify-between">
         <h3 class="font-bold">Your Library</h3>
-        <div class=" flex gap-2 items-center bg-[#292626] px-4 py-0.5 rounded-3xl">
+        <button class=" flex gap-2 items-center bg-[#292626]  hover:bg-[#2e2a2a] active:scale-95 px-4 py-0.5 rounded-3xl">
           <p class="text-2xl">+</p>
           <p class="">Create</p>
-        </div>
+        </button>
       </div>
 
       <div class="w-auto h-48 p-6 rounded-2xl bg-[#292626] mt-24 border border-gray-300 hover:border-blue-500 transition">
