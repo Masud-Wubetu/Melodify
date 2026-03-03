@@ -5,18 +5,24 @@ import { colors, typography, radius, spacing } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { toggleLikeSong } from '../api/userApi';
 
+import { useAuthStore } from '../store/authStore';
+
 const SongCard = ({ song, onPress }) => {
     const navigation = useNavigation();
-    const [isLiked, setIsLiked] = useState(false);
+    const { likedSongsIds, toggleLikeId } = useAuthStore();
+    const isLiked = likedSongsIds.includes(song?._id);
 
     if (!song) return null;
 
     const handleLike = async () => {
         try {
+            // Optimistic update
+            toggleLikeId(song._id);
             await toggleLikeSong(song._id);
-            setIsLiked(!isLiked);
         } catch (error) {
             console.error("Failed to toggle like", error);
+            // Rollback on error
+            toggleLikeId(song._id);
         }
     };
 

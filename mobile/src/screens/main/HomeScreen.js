@@ -137,9 +137,9 @@ const styles = StyleSheet.create({
         backgroundColor: colors.background,
     },
     contentContainer: {
-        padding: spacing.md,
+        padding: spacing.lg,
         paddingTop: spacing.xl * 2,
-        paddingBottom: 100, // Space for mini player later
+        paddingBottom: 120,
     },
     headerRow: {
         flexDirection: 'row',
@@ -151,9 +151,10 @@ const styles = StyleSheet.create({
         color: colors.text,
         fontFamily: typography.fontFamily.bold,
         fontSize: typography.fontSize.huge,
+        letterSpacing: -0.5,
     },
     section: {
-        marginBottom: spacing.xl,
+        marginBottom: spacing.xxl,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -165,6 +166,7 @@ const styles = StyleSheet.create({
         color: colors.text,
         fontFamily: typography.fontFamily.bold,
         fontSize: typography.fontSize.xl,
+        letterSpacing: 0.2,
     },
     songsList: {
         flexDirection: 'column',

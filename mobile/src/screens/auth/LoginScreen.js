@@ -25,7 +25,9 @@ export default function LoginScreen({ navigation }) {
             // Backend returns { token, user: { _id, name, email, ... } }
             await login(data.user || data, data.token);
         } catch (error) {
-            Alert.alert('Login failed', error.response?.data?.message || 'Something went wrong');
+            console.error(error);
+            const errorMsg = error.response?.data?.message || error.message || 'Something went wrong';
+            Alert.alert('Login failed', `Details: ${errorMsg}`);
         } finally {
             setLoading(false);
         }

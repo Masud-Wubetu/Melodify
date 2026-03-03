@@ -29,14 +29,20 @@ const styles = StyleSheet.create({
     container: {
         marginRight: spacing.md,
         alignSelf: 'flex-start',
+        marginBottom: spacing.sm,
     },
     imageContainer: {
         width: '100%',
         aspectRatio: 1,
         backgroundColor: colors.surfaceLight,
         borderRadius: radius.md,
-        marginBottom: spacing.sm,
+        marginBottom: spacing.xs,
         overflow: 'hidden',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
     },
     image: {
         width: '100%',
@@ -52,6 +58,7 @@ const styles = StyleSheet.create({
         color: colors.textMuted,
         fontFamily: typography.fontFamily.regular,
         fontSize: typography.fontSize.xs,
+        lineHeight: 16,
     },
 });
 

@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlaylistById } from '../../api/playlistApi';
-import { toggleFollowPlaylist } from '../../api/userApi';
+import { toggleFollowPlaylist, getProfile } from '../../api/userApi';
+import { LinearGradient } from 'expo-linear-gradient';
 import SongCard from '../../components/SongCard';
 import { usePlayerStore } from '../../store/playerStore';
 
@@ -21,8 +22,24 @@ export default function PlaylistScreen({ route, navigation }) {
     const fetchPlaylistData = async () => {
         setLoading(true);
         try {
-            const data = await getPlaylistById(id);
-            setPlaylist(data);
+            if (id === 'liked') {
+                const profile = await getProfile();
+                setPlaylist({
+                    _id: 'liked',
+                    name: 'Liked Songs',
+                    description: 'Your favorite tracks, all in one place.',
+                    coverImage: 'https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg', // Fallback or special gradient
+                    songs: profile.likedSongs || [],
+                    creator: { name: profile.name, profilePicture: profile.profilePicture },
+                    followers: 0,
+                    isLikedSongs: true
+                });
+                setIsFollowed(true); // Can't "unfollow" your own likes easily in this view
+            } else {
+                const data = await getPlaylistById(id);
+                setPlaylist(data);
+                // In a real app, check if user follows this playlist
+            }
         } catch (error) {
             console.error("Failed to load playlist details", error);
         } finally {
@@ -71,11 +88,24 @@ export default function PlaylistScreen({ route, navigation }) {
             showsVerticalScrollIndicator={false}
         >
             <View style={styles.headerImageContainer}>
-                <Image
-                    source={{ uri: playlist.coverImage || 'https://via.placeholder.com/500' }}
-                    style={styles.headerImage}
-                    resizeMode="cover"
-                />
+                {playlist.isLikedSongs ? (
+                    <LinearGradient
+                        colors={['#450af5', '#c4efd9']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.headerImage}
+                    >
+                        <View style={styles.likedIconContainer}>
+                            <Ionicons name="heart" size={80} color={colors.text} />
+                        </View>
+                    </LinearGradient>
+                ) : (
+                    <Image
+                        source={{ uri: playlist.coverImage || 'https://via.placeholder.com/500' }}
+                        style={styles.headerImage}
+                        resizeMode="cover"
+                    />
+                )}
                 <View style={styles.headerOverlay}>
                     <TouchableOpacity
                         style={[styles.backButton, { top: insets.top + spacing.sm }]}
@@ -86,13 +116,15 @@ export default function PlaylistScreen({ route, navigation }) {
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.playlistTitle}>{playlist.name}</Text>
 
-                        <View style={styles.creatorRow}>
-                            <Image
-                                source={{ uri: playlist.creator?.profilePicture || 'https://via.placeholder.com/50' }}
-                                style={styles.creatorImage}
-                            />
-                            <Text style={styles.creatorName}>{playlist.creator?.name || 'Unknown User'}</Text>
-                        </View>
+                        {!playlist.isLikedSongs && (
+                            <View style={styles.creatorRow}>
+                                <Image
+                                    source={{ uri: playlist.creator?.profilePicture || 'https://via.placeholder.com/50' }}
+                                    style={styles.creatorImage}
+                                />
+                                <Text style={styles.creatorName}>{playlist.creator?.name || 'Unknown User'}</Text>
+                            </View>
+                        )}
 
                         <Text style={styles.metadata}>
                             {playlist.followers} followers • {playlist.songs?.length || 0} songs
@@ -162,6 +194,11 @@ const styles = StyleSheet.create({
     headerImage: {
         width: '100%',
         height: '100%',
+    },
+    likedIconContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     headerOverlay: {
         ...StyleSheet.absoluteFillObject,

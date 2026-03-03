@@ -27,7 +27,9 @@ export default function RegisterScreen({ navigation }) {
             // Assuming registration also returns a token
             await login(data.user || data, data.token);
         } catch (error) {
-            Alert.alert('Registration failed', error.response?.data?.message || 'Something went wrong');
+            console.error(error);
+            const errorMsg = error.response?.data?.message || error.message || 'Something went wrong';
+            Alert.alert('Registration failed', `Details: ${errorMsg}`);
         } finally {
             setLoading(false);
         }

@@ -17,8 +17,9 @@ apiClient.interceptors.request.use(
     async (config) => {
         const token = await AsyncStorage.getItem('token');
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`; // Adjust if backend uses a different header like x-auth-token
+            config.headers.Authorization = `Bearer ${token}`;
         }
+        console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
         return config;
     },
     (error) => Promise.reject(error)
@@ -26,8 +27,15 @@ apiClient.interceptors.request.use(
 
 // Response Interceptor: auto logout on 401
 apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log(`[API Success] ${response.config.method.toUpperCase()} ${response.config.url}`);
+        return response;
+    },
     (error) => {
+        console.log(`[API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, error.message);
+        if (error.response) {
+            console.log(`[API Error Data]`, error.response.data);
+        }
         if (error.response?.status === 401) {
             useAuthStore.getState().logout();
         }

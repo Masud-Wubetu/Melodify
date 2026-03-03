@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../../store/playerStore';
 import Slider from '@react-native-community/slider';
+import { useAuthStore } from '../../store/authStore';
+import { toggleLikeSong } from '../../api/userApi';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +29,20 @@ export default function PlayerScreen({ navigation }) {
         toggleShuffle,
         cycleRepeatMode
     } = usePlayerStore();
+
+    const { likedSongsIds, toggleLikeId } = useAuthStore();
+    const isLiked = likedSongsIds.includes(currentSong?._id);
+
+    const handleLike = async () => {
+        if (!currentSong) return;
+        try {
+            toggleLikeId(currentSong._id);
+            await toggleLikeSong(currentSong._id);
+        } catch (error) {
+            console.error("Failed to toggle like", error);
+            toggleLikeId(currentSong._id); // Rollback
+        }
+    };
 
     if (!currentSong) return null;
 
@@ -86,8 +102,12 @@ export default function PlayerScreen({ navigation }) {
                             style={{ marginRight: spacing.md }}
                         />
                     </TouchableOpacity>
-                    <TouchableOpacity>
-                        <Ionicons name="heart-outline" size={28} color={colors.primary} />
+                    <TouchableOpacity onPress={handleLike}>
+                        <Ionicons
+                            name={isLiked ? "heart" : "heart-outline"}
+                            size={28}
+                            color={isLiked ? colors.primary : colors.textMuted}
+                        />
                     </TouchableOpacity>
                 </View>
 
