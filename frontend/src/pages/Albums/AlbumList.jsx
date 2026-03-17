@@ -20,7 +20,8 @@ const AlbumList = () => {
     const fetchAlbums = async () => {
         try {
             const data = await apiClient.get('/albums');
-            setAlbums(data);
+            // Backend returns { albums, page, pages, totalAlbum }
+            setAlbums(data.albums || []);
         } catch (error) {
             console.error(error);
         } finally {

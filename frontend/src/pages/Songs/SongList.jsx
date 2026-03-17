@@ -26,7 +26,8 @@ const SongList = () => {
     const fetchSongs = async () => {
         try {
             const data = await apiClient.get('/songs');
-            setSongs(data);
+            // Backend returns { songs, page, pages, totalSong }
+            setSongs(data.songs || []);
         } catch (error) {
             console.error(error);
         } finally {

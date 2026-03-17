@@ -20,7 +20,8 @@ const ArtistList = () => {
     const fetchArtists = async () => {
         try {
             const data = await apiClient.get('/artists');
-            setArtists(data);
+            // Backend returns { artists, page, pages, totalArtist }
+            setArtists(data.artists || []);
         } catch (error) {
             console.error(error);
         } finally {
