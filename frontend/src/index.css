@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
-body {
-  @apply bg-black text-white;
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-primary: #1DB954;
+  --color-primary-hover: #1ed760;
+
+  --color-background-base: #121212;
+  --color-background-elevated: #181818;
+  --color-background-highlight: #282828;
+
+  --color-text-base: #FFFFFF;
+  --color-text-subdued: #a7a7a7;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background-base);
+    color: var(--color-text-base);
+    font-family: var(--font-sans);
+    antialiased: true;
+  }
 }
