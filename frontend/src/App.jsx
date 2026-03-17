@@ -10,6 +10,14 @@ import ArtistList from './pages/Artists/ArtistList';
 import ArtistDetail from './pages/Artists/ArtistDetail';
 import ArtistForm from './pages/Artists/ArtistForm';
 
+import AlbumList from './pages/Albums/AlbumList';
+import AlbumDetail from './pages/Albums/AlbumDetail';
+import AlbumForm from './pages/Albums/AlbumForm';
+
+import SongList from './pages/Songs/SongList';
+import SongDetail from './pages/Songs/SongDetail';
+import SongForm from './pages/Songs/SongForm';
+
 const Dashboard = () => <div className="p-8"><h1 className="text-3xl font-bold mb-6">Good morning</h1></div>;
 
 function App() {
@@ -32,8 +40,15 @@ function App() {
           <Route path="/artists/:id" element={<ArtistDetail />} />
           <Route path="/artists/edit/:id" element={<ArtistForm />} />
 
-          <Route path="/albums" element={<div className="p-8 text-2xl font-bold">Albums</div>} />
-          <Route path="/songs" element={<div className="p-8 text-2xl font-bold">Songs</div>} />
+          <Route path="/albums" element={<AlbumList />} />
+          <Route path="/albums/create" element={<AlbumForm />} />
+          <Route path="/albums/:id" element={<AlbumDetail />} />
+          <Route path="/albums/edit/:id" element={<AlbumForm />} />
+
+          <Route path="/songs" element={<SongList />} />
+          <Route path="/songs/create" element={<SongForm />} />
+          <Route "/songs/:id" element={<SongDetail />} />
+          <Route path="/songs/edit/:id" element={<SongForm />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" />} />
