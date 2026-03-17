@@ -1,380 +1,228 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
-const Artist = require('../models/Artist');
-const User = require('../models/User')
-const Playlist = require('../models/Playlist');
-const Song = require('../models/Song');
-const uploadToCloudinary = require('../utils/cloudinaryUpload');
-const upload = require('../middlewares/upload');
+const prisma = require('../lib/prisma');
+const { uploadToCloudinary } = require('../middlewares/upload');
 
-//@desc - Create new Playlist
+//@desc - create Playlist
 //@route - POST /api/playlists
 //@Access - Private
-
 const createPlaylist = asyncHandler(async (req, res) => {
     const { name, description, isPublic } = req.body;
-    //Validations
-    if (!name || !description) {
+
+    if (!name) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Name and Description are required');
+        throw new Error('Playlist name is required');
     }
 
-    if (name.length < 3 || name.length > 50) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Name must be between 3 and 50 characters');
-    }
-
-    if (description.length < 10 || description.length > 200) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Description must be between 10 and 200 characters');
-    }
-
-    // Check if playlist already exist
-    const existingPlaylist = await Playlist.findOne({
-        name,
-        creator: req.user._id,
-    });
-
-    if (existingPlaylist) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('playlist with this name already exist');
-    }
-
-    // Upload playlist cover image if provided
-    let coverImageUrl = '';
+    let imageUrl = 'https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg';
     if (req.file) {
-        const result = await uploadToCloudinary(req.file.path, 'melodify/playlists');
-        coverImageUrl = result.secure_url;
+        const result = await uploadToCloudinary(req.file.path, "melodify/playlists");
+        imageUrl = result.secure_url;
     }
 
-    // Create the playlist
-    const playlist = await Playlist.create({
-        name,
-        description,
-        creator: req.user._id,
-        coverImage: coverImageUrl || undefined,
-        isPublic: isPublic === 'true'
+    const playlist = await prisma.playlist.create({
+        data: {
+            name,
+            description,
+            isPublic: isPublic === 'true' || isPublic === true,
+            coverImage: imageUrl,
+            creatorId: req.user.id,
+        },
+        include: {
+            creator: { select: { name: true } }
+        }
     });
 
-    res.status(StatusCodes.CREATED).json(playlist);
+    res.status(StatusCodes.CREATED).json({ ...playlist, _id: playlist.id });
 });
 
-//@desc - Get Playlists with filtering and pagination
-//@route - GET /api/playlists?search=summer&page=1&limit=10
+//@desc - Get all public playlists
+//@route - GET /api/playlists
 //@Access - Public
-
 const getPlaylists = asyncHandler(async (req, res) => {
-    const { search, page = 1, limit = 10 } = req.query;
-    // Build filter object
-    const filter = { isPublic: true }; // only public playlists
-    if (search) {
-        filter.$or = [
-            { name: { $regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } },
-        ];
-    }
-
-    // Count total playlists  with filter
-    const count = await Playlist.countDocuments(filter);
-    // Pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    // Get playlists
-    const playlists = await Playlist.find(filter)
-        .sort({ followers: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
-        .populate("creator", "name profilePicture")
-        .populate("collaborators", "name profilePicture")
-    res.status(StatusCodes.OK).json({
-        playlists,
-        page: parseInt(page),
-        pages: Math.ceil(count / parseInt(limit)),
-        totalPlaylist: count,
-
+    const playlists = await prisma.playlist.findMany({
+        where: { isPublic: true },
+        include: {
+            creator: { select: { name: true, profilePicture: true } }
+        }
     });
+
+    // Map id to _id for frontend compatibility
+    const mappedPlaylists = playlists.map(p => ({ ...p, _id: p.id }));
+    res.status(StatusCodes.OK).json(mappedPlaylists);
 });
 
-//@desc - get user's Playlist
-//@route - GET /api/playlists/user/me
+//@desc - get User Playlists
+//@route - GET /api/playlists/me
 //@Access - Private
-
 const getUserPlaylists = asyncHandler(async (req, res) => {
-    const playlists = await Playlist.find({
-        $or: [
-            { creator: req.user._id },
-            { collaborators: req.user._id }
-        ],
-    })
-        .sort({ createdAt: -1 })
-        .populate('creator', 'name profilePicture');
-    res.status(StatusCodes.OK).json(playlists);
+    const playlists = await prisma.playlist.findMany({
+        where: {
+            OR: [
+                { creatorId: req.user.id },
+                { collaborators: { some: { id: req.user.id } } }
+            ]
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+            creator: { select: { name: true, profilePicture: true } }
+        }
+    });
 
+    const mappedPlaylists = playlists.map(p => ({ ...p, _id: p.id }));
+    res.status(StatusCodes.OK).json(mappedPlaylists);
 });
 
 //@desc - Get playlist by Id
 //@route - GET /api/playlists/:id
-//@Access - Private
-
+//@Access - Public
 const getPlaylistById = asyncHandler(async (req, res) => {
-    const playlist = await Playlist.findById(req.params.id)
-        .populate("creator", "name profilePicture")
-        .populate("collaborators", "name profilePicture")
-        .populate({
-            path: "songs",
-            populate: { path: "artist", select: "name" }
-        });
+    const playlist = await prisma.playlist.findUnique({
+        where: { id: req.params.id },
+        include: {
+            creator: { select: { id: true, name: true, profilePicture: true } },
+            songs: {
+                include: {
+                    artist: { select: { name: true } },
+                    album: { select: { title: true } }
+                }
+            },
+            collaborators: { select: { id: true, name: true, profilePicture: true } }
+        }
+    });
+
+    if (playlist) {
+        res.status(StatusCodes.OK).json({ ...playlist, _id: playlist.id });
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Playlist Not Found');
+    }
+});
+
+//@desc - update Playlist
+//@route - PUT /api/playlists/:id
+//@Access - Private
+const updatePlaylist = asyncHandler(async (req, res) => {
+    const { name, description, isPublic } = req.body;
+    const playlistId = req.params.id;
+
+    const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
+
     if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Playlist Not Found');
     }
 
-    // Check if playlist is private and current user not the creator or collaborator
-    if (!playlist.isPublic && !(req.user && (playlist.creator.equals(req.user._id) ||
-        playlist.collaborators.some((collab) => collab.equals(req.user._id))))) {
+    if (playlist.creatorId !== req.user.id) {
         res.status(StatusCodes.FORBIDDEN);
-        throw new Error('This playlist is Private');
-    }
-    res.status(StatusCodes.OK).json(playlist);
-
-});
-
-//@desc - Update Playlist
-//@route - PUT /api/playlists/:id
-//@Access - Private
-
-const updatePlaylist = asyncHandler(async (req, res) => {
-    const { name, description, isPublic } = req.body;
-    const playlist = await Playlist.findById(req.params.id);
-    if (!playlist) {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Playlist Not Found')
-    }
-    // Check if current user is creator or collaborator
-    if (
-        !playlist.creator.equals(req.user._id) ||
-        !playlist.collaborators.some((collab) => collab.equals(req.user._id))
-    ) {
-        res.status(StatusCodes.FORBIDDEN);
-        throw new Error('Not authorized to update this Playlist');
+        throw new Error('Not authorized to update this playlist');
     }
 
-    // Update the plyalists field
-    playlist.name = name || playlist.name;
-    playlist.description = description || playlist.description;
-    // Only creator can change privacy settings
-    if (playlist.creator.equals(req.user._id)) {
-        playlist.isPublic =
-            isPublic !== undefined ? isPublic === 'true' : playlist.isPublic;
-    }
+    let dataToUpdate = {
+        name: name || playlist.name,
+        description: description || playlist.description,
+        isPublic: isPublic !== undefined ? (isPublic === 'true' || isPublic === true) : playlist.isPublic,
+    };
 
-    // Update cover image if provided
     if (req.file) {
-        const result = await uploadToCloudinary(req.file.path, 'melodify/playlists');
-        playlist.coverImage = result.secure_url;
+        const result = await uploadToCloudinary(req.file.path, "melodify/playlists");
+        dataToUpdate.coverImage = result.secure_url;
     }
 
-    const updatedPlaylist = await playlist.save();
-    res.status(StatusCodes.OK).json(updatedPlaylist);
+    const updatedPlaylist = await prisma.playlist.update({
+        where: { id: playlistId },
+        data: dataToUpdate,
+    });
 
+    res.status(StatusCodes.OK).json({ ...updatedPlaylist, _id: updatedPlaylist.id });
 });
 
-//@desc - Delete Playlist
-//@route - DELETE /api/playlist/:id
+//@desc - delete Playlist
+//@route - DELETE /api/playlists/:id
 //@Access - Private
-
 const deletePlaylist = asyncHandler(async (req, res) => {
-    const playlist = await Playlist.findById(req.params.id);
+    const playlist = await prisma.playlist.findUnique({ where: { id: req.params.id } });
+
     if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found");
+        throw new Error('Playlist Not Found');
     }
 
-    // Only creator can delete it's own playlist
-    if (!playlist.creator.equals(req.user._id)) {
+    if (playlist.creatorId !== req.user.id) {
         res.status(StatusCodes.FORBIDDEN);
-        throw new Error('Not authorized to delete ths playlist');
+        throw new Error('Not authorized to delete this playlist');
     }
 
-    await playlist.deleteOne();
-    res.status(StatusCodes.OK).json({
-        message: 'Playlist removed'
+    await prisma.playlist.delete({
+        where: { id: req.params.id }
     });
+
+    res.status(StatusCodes.OK).json({ message: 'Playlist removed' });
 });
 
-//@desc - Add songs to Playlist
-//@route - PUT /api/playlists/:id/add-songs
+//@desc - Add song to playlist
+//@route - POST /api/playlists/:id/songs
 //@Access - Private
+const addSongToPlaylist = asyncHandler(async (req, res) => {
+    const { songId } = req.body;
+    const playlistId = req.params.id;
 
-const addSongsToPlaylist = asyncHandler(async (req, res) => {
-    const { songIds } = req.body;
-    if (!songIds || !Array.isArray(songIds)) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Song Ids are required');
-    }
+    const playlist = await prisma.playlist.findUnique({
+        where: { id: playlistId },
+        include: { collaborators: { select: { id: true } } }
+    });
 
-    // Find the Playlist
-    const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found");
+        throw new Error('Playlist Not Found');
     }
 
-    if (!playlist.creator.equals(req.user._id) && !playlist.
-        collaborators.some((collab) => collab.equals(req.user._id))) {
+    const isCollaborator = playlist.collaborators.some(c => c.id === req.user.id);
+    if (playlist.creatorId !== req.user.id && !isCollaborator) {
         res.status(StatusCodes.FORBIDDEN);
-        throw new Error("Not authorized to modify this playlist ");
+        throw new Error('Not authorized to add songs to this playlist');
     }
 
-    // Add songs to playlist
-    for (const songId of songIds) {
-        // Check if song exist
-        const song = await Song.findById(songId);
-        if (!song) {
-            continue; // Skip if song doesn't exist 
+    await prisma.playlist.update({
+        where: { id: playlistId },
+        data: {
+            songs: { connect: { id: songId } }
         }
+    });
 
-        // Check if song already in playlist
-        if (playlist.songs.includes(songId)) {
-            continue; // Skip if song is already in playlist
-        }
-
-        playlist.songs.push(songId);
-    }
-
-    await playlist.save();
-    res.status(StatusCodes.OK).json(playlist);
-
+    res.status(StatusCodes.OK).json({ message: 'Song added to playlist' });
 });
 
-//@desc - Remove song from Playlist
-//@route - PUT /api/playlists/:id/remove-song/:songId
+//@desc - remove song from Playlist
+//@route - DELETE /api/playlists/:id/songs/:songId
 //@Access - Private
-
 const removeSongFromPlaylist = asyncHandler(async (req, res) => {
-    // Find the Playlist
-    const playlist = await Playlist.findById(req.params.id);
-    if (!playlist) {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found");
-    }
+    const { id: playlistId, songId } = req.params;
 
-    // Check if current user is reator or collaborator
-    if (!playlist.creator.equals(req.user._id) && !playlist.
-        collaborators.some((collab) => collab.equals(req.user._id))) {
-        res.status(StatusCodes.FORBIDDEN);
-        throw new Error("Not authorized to modify this playlist ");
-    }
-
-    const songId = req.params.songId;
-    // Check is song is in the playlist
-    if (!playlist.songs.includes(songId)) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("Song is not in the playlist");
-    }
-
-    playlist.songs = plau = ylist.songs.filter((id) => id.toString() !== songId);
-    await playlist.save();
-    res.status(StatusCodes.OK).json({
-        message: 'Song removed from Playlist'
+    const playlist = await prisma.playlist.findUnique({
+        where: { id: playlistId },
+        include: { collaborators: { select: { id: true } } }
     });
-});
 
-//@desc - Add collaborator to Playlist
-//@route - POST /api/playlists/:id/add-collaborator
-//@Access - Private
-
-const addCollaboratorToPlaylist = asyncHandler(async (req, res) => {
-    const userId = req.body.userId;
-    if (!userId) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("User Id is required");
-    }
-
-    // Check if user exists
-    const user = await User.findById(userId);
-    if (!user) {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error("User Not Found");
-    }
-
-    // Find the Playlist
-    const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found");
+        throw new Error('Playlist Not Found');
     }
 
-    // Only creator can add collaborator
-    if (!playlist.creator.equals(req.user._id)) {
+    const isCollaborator = playlist.collaborators.some(c => c.id === req.user.id);
+    if (playlist.creatorId !== req.user.id && !isCollaborator) {
         res.status(StatusCodes.FORBIDDEN);
-        throw new Error('Only playlist creator can add collaborators ');
+        throw new Error('Not authorized to remove songs from this playlist');
     }
 
-    // Check if user is already collaborator
-    if (playlist.collaborators.includes(userId)) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("User is alread a collaborator");
-    }
+    await prisma.playlist.update({
+        where: { id: playlistId },
+        data: {
+            songs: { disconnect: { id: songId } }
+        }
+    });
 
-    // Add user to collaborator
-    playlist.collaborators.push(userId);
-    await playlist.save();
-    res.status(StatusCodes.OK).json(playlist);
-
-});
-
-//@desc - remove collaborator from Playlist
-//@route - PUT /api/playlists/:id/remove-collabborator
-//@Access - Private
-
-const removeCollaboratorToPlaylist = asyncHandler(async (req, res) => {
-    const userId = req.body.userId;
-    if (!userId) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("User Id is required");
-    }
-
-    // Find the Playlist
-    const playlist = await Playlist.findById(req.params.id);
-    if (!playlist) {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found");
-    }
-
-    // Only creator can remove collaborator
-    if (!playlist.creator.equals(req.user._id)) {
-        res.status(StatusCodes.FORBIDDEN);
-        throw new Error('Only playlist creator can remove collaborators ');
-    }
-
-    // Check if user is a collaborator
-    if (!playlist.collaborators.includes(userId)) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("User is not  a collaborator");
-    }
-
-    // remove user from collaborators
-    playlist.collaborators = playlist.collaborators.filter(
-        (id) => id.toString() !== userId
-    );
-    await playlist.save();
-    res.status(StatusCodes.OK).json(playlist);
-
-});
-
-//@desc - get Featured Playlists(high follower count)
-//@route - GET /api/playlists/featured?limit=10
-//@Access - Private
-
-const getFeaturedPlaylists = asyncHandler(async (req, res) => {
-    const { limit = 5 } = req.query;
-    const filter = { isPublic: true };
-    const playlists = await Playlist.find(filter)
-        .limit(parseInt(limit))
-        .sort({ followers: -1 })
-        .populate('creator', 'name profilePicture')
-    res.status(StatusCodes.OK).json(playlists);
-
+    res.status(StatusCodes.OK).json({ message: 'Song removed from playlist' });
 });
 
 module.exports = {
@@ -384,10 +232,6 @@ module.exports = {
     getPlaylistById,
     updatePlaylist,
     deletePlaylist,
-    addSongsToPlaylist,
+    addSongToPlaylist,
     removeSongFromPlaylist,
-    addCollaboratorToPlaylist,
-    removeCollaboratorToPlaylist,
-    getFeaturedPlaylists,
-
-}
+};
