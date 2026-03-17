@@ -9,16 +9,16 @@ const userSchema = new mongoose.Schema({
         trim: true
     },
     email: {
-        type:String,
+        type: String,
         required: [true, 'Email is required'],
         trim: true
     },
     password: {
-        type:String,
+        type: String,
         required: [true, 'Password is required'],
         minlength: [6, 'Password must be at least 6 characters']
     },
-    profile: {
+    profilePicture: {
         type: String,
         default: 'https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg'
     },
@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
     followedPlaylists: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Artist'
+            ref: 'Playlist'
         },
     ],
 }, {
@@ -58,13 +58,15 @@ const userSchema = new mongoose.Schema({
 });
 
 // Method to compare password with hashed password
-userSchema.methods.matchPassword =  async function(enteredPassword) {
+userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 }
 
 // Hashing password
-userSchema.pre("save", async function() {
-    if(!this.isModified('password'));
+userSchema.pre("save", async function (next) {
+    if (!this.isModified('password')) {
+        return next();
+    }
 
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);

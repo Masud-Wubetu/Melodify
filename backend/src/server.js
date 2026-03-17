@@ -15,6 +15,7 @@ const artistRouter = require('./routes/artistRoutes');
 const albumRouter = require('./routes/albumRoutes');
 const songRouter = require('./routes/songRoutes');
 const playlistRouter = require('./routes/playlistRoutes');
+const adminRouter = require('./routes/adminRoutes');
 
 // Initialize app
 const app = express();
@@ -34,8 +35,11 @@ app.use(express.json());
 
 // Allow requests from frontend
 app.use(cors({
-  origin: "http://localhost:5173", // frontend URL
-  credentials: true // allows cookies/auth if needed
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests) and all other origins during development
+        return callback(null, true);
+    },
+    credentials: true // allows cookies/auth if needed
 }));
 
 // Routes
@@ -44,6 +48,7 @@ app.use('/api/artists', artistRouter);
 app.use('/api/albums', albumRouter);
 app.use('/api/songs', songRouter);
 app.use('/api/playlists', playlistRouter);
+app.use('/api/admin', adminRouter);
 
 // Error handling
 //404
@@ -53,12 +58,12 @@ app.use((req, res, next) => {
     next(error);
 });
 
- // Global error handler
+// Global error handler
 app.use((err, req, res, next) => {
     // Default error
     const status = err.status || err.statusCode || 500;
     const message = err.message || 'Internal Server Error';
-    
+
     res.status(status).json({
         success: false,
         message: message,

@@ -1,77 +1,77 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
 const Artist = require('../models/Artist');
-const User  = require('../models/User')
+const User = require('../models/User')
 const Playlist = require('../models/Playlist');
 const Song = require('../models/Song');
-const  uploadToCloudinary = require('../utils/cloudinaryUpload');
+const uploadToCloudinary = require('../utils/cloudinaryUpload');
 const upload = require('../middlewares/upload');
 
 //@desc - Create new Playlist
 //@route - POST /api/playlists
 //@Access - Private
 
-const createPlaylist  = asyncHandler(async (req, res) => {
+const createPlaylist = asyncHandler(async (req, res) => {
     const { name, description, isPublic } = req.body;
     //Validations
-    if(!name || !description) {
-        req.status(StatusCodes.BAD_REQUEST);
+    if (!name || !description) {
+        res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Name and Description are required');
     }
 
-    if(name.lenght < 3 && name.lenght > 50) {
-        req.status(StatusCodes.BAD_REQUEST);
+    if (name.length < 3 || name.length > 50) {
+        res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Name must be between 3 and 50 characters');
     }
 
-    if(description.length < 10 && description.length > 200) {
-        req.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Desc ription must be between 10 and 20 0 characters');
+    if (description.length < 10 || description.length > 200) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Description must be between 10 and 200 characters');
     }
 
     // Check if playlist already exist
     const existingPlaylist = await Playlist.findOne({
         name,
         creator: req.user._id,
-    }); 
+    });
 
-    if(existingPlaylist) {
-        req.status(StatusCodes.BAD_REQUEST);
+    if (existingPlaylist) {
+        res.status(StatusCodes.BAD_REQUEST);
         throw new Error('playlist with this name already exist');
     }
 
     // Upload playlist cover image if provided
-     let coverImageUrl = '';
-     if(req.file) {
+    let coverImageUrl = '';
+    if (req.file) {
         const result = await uploadToCloudinary(req.file.path, 'melodify/playlists');
-        coverImageUrl = result.secure_url; 
-     }
+        coverImageUrl = result.secure_url;
+    }
 
-     // Create the playlist
-     const playlist = await Playlist.create({
+    // Create the playlist
+    const playlist = await Playlist.create({
         name,
         description,
         creator: req.user._id,
         coverImage: coverImageUrl || undefined,
         isPublic: isPublic === 'true'
-     });
+    });
 
-     res.status(StatusCodes.CREATED).json(playlist);
+    res.status(StatusCodes.CREATED).json(playlist);
 });
 
 //@desc - Get Playlists with filtering and pagination
 //@route - GET /api/playlists?search=summer&page=1&limit=10
 //@Access - Public
 
-const getPlaylists  = asyncHandler(async (req, res) => {
+const getPlaylists = asyncHandler(async (req, res) => {
     const { search, page = 1, limit = 10 } = req.query;
     // Build filter object
     const filter = { isPublic: true }; // only public playlists
-    if(search) {
+    if (search) {
         filter.$or = [
-            { name: { $regex: search, $options: 'i' }},
-            { description: { $regex: search, $options: 'i' }},
-        ]; 
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+        ];
     }
 
     // Count total playlists  with filter
@@ -90,7 +90,7 @@ const getPlaylists  = asyncHandler(async (req, res) => {
         page: parseInt(page),
         pages: Math.ceil(count / parseInt(limit)),
         totalPlaylist: count,
- 
+
     });
 });
 
@@ -102,11 +102,11 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     const playlists = await Playlist.find({
         $or: [
             { creator: req.user._id },
-            { collaborators: req.user._id}
+            { collaborators: req.user._id }
         ],
     })
         .sort({ createdAt: -1 })
-        .populate('creator', 'name profilePicture'); 
+        .populate('creator', 'name profilePicture');
     res.status(StatusCodes.OK).json(playlists);
 
 });
@@ -115,18 +115,22 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 //@route - GET /api/playlists/:id
 //@Access - Private
 
-const getPlaylistById  = asyncHandler(async (req, res) => {
+const getPlaylistById = asyncHandler(async (req, res) => {
     const playlist = await Playlist.findById(req.params.id)
         .populate("creator", "name profilePicture")
-        .populate("collaborators", "name profilePicture");
-    if(!playlist) {
+        .populate("collaborators", "name profilePicture")
+        .populate({
+            path: "songs",
+            populate: { path: "artist", select: "name" }
+        });
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Playlist Not Found');
     }
 
     // Check if playlist is private and current user not the creator or collaborator
-    if (!playlist.isPublic && !(req.user && (playlist.creator.equals(req.user._id) || 
-    playlist.collaborators.some((collab) => collab.equals(req.user._id))))) {
+    if (!playlist.isPublic && !(req.user && (playlist.creator.equals(req.user._id) ||
+        playlist.collaborators.some((collab) => collab.equals(req.user._id))))) {
         res.status(StatusCodes.FORBIDDEN);
         throw new Error('This playlist is Private');
     }
@@ -138,16 +142,16 @@ const getPlaylistById  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id
 //@Access - Private
 
-const updatePlaylist  = asyncHandler(async (req, res) => {
+const updatePlaylist = asyncHandler(async (req, res) => {
     const { name, description, isPublic } = req.body;
     const playlist = await Playlist.findById(req.params.id);
-    if(!playlist) {
-        res.status(StatusCodes.NOT_FOUND );
+    if (!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
         throw new Error('Playlist Not Found')
     }
     // Check if current user is creator or collaborator
     if (
-        !playlist.creator.equals(req.user._id) || 
+        !playlist.creator.equals(req.user._id) ||
         !playlist.collaborators.some((collab) => collab.equals(req.user._id))
     ) {
         res.status(StatusCodes.FORBIDDEN);
@@ -155,16 +159,16 @@ const updatePlaylist  = asyncHandler(async (req, res) => {
     }
 
     // Update the plyalists field
-    playlist.name = name ||  playlist.name;
+    playlist.name = name || playlist.name;
     playlist.description = description || playlist.description;
     // Only creator can change privacy settings
-    if(playlist.creator.equals(req.user._id)) {
-        playlist.isPublic = 
+    if (playlist.creator.equals(req.user._id)) {
+        playlist.isPublic =
             isPublic !== undefined ? isPublic === 'true' : playlist.isPublic;
     }
 
     // Update cover image if provided
-    if(req.file) {
+    if (req.file) {
         const result = await uploadToCloudinary(req.file.path, 'melodify/playlists');
         playlist.coverImage = result.secure_url;
     }
@@ -178,15 +182,15 @@ const updatePlaylist  = asyncHandler(async (req, res) => {
 //@route - DELETE /api/playlist/:id
 //@Access - Private
 
-const deletePlaylist  = asyncHandler(async (req, res) => {
+const deletePlaylist = asyncHandler(async (req, res) => {
     const playlist = await Playlist.findById(req.params.id);
-    if(!playlist) {
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found"); 
+        throw new Error("Playlist Not Found");
     }
 
     // Only creator can delete it's own playlist
-    if(!playlist.creator.equals(req.user._id)) {
+    if (!playlist.creator.equals(req.user._id)) {
         res.status(StatusCodes.FORBIDDEN);
         throw new Error('Not authorized to delete ths playlist');
     }
@@ -201,40 +205,40 @@ const deletePlaylist  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id/add-songs
 //@Access - Private
 
-const addSongsToPlaylist  = asyncHandler(async (req, res) => {
+const addSongsToPlaylist = asyncHandler(async (req, res) => {
     const { songIds } = req.body;
-    if(!songIds || !Array.isArray(songIds)) {
+    if (!songIds || !Array.isArray(songIds)) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Song Ids are required'); 
+        throw new Error('Song Ids are required');
     }
 
     // Find the Playlist
     const playlist = await Playlist.findById(req.params.id);
-    if(!playlist) {
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found"); 
+        throw new Error("Playlist Not Found");
     }
-    
-    if(!playlist.creator.equals(req.user._id) && !playlist.
-    collaborators.some((collab) => collab.equals(req.user._id))) {
-         res.status(StatusCodes.FORBIDDEN);
-        throw new Error("Not authorized to modify this playlist "); 
+
+    if (!playlist.creator.equals(req.user._id) && !playlist.
+        collaborators.some((collab) => collab.equals(req.user._id))) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error("Not authorized to modify this playlist ");
     }
 
     // Add songs to playlist
-    for(const songId of songIds) {
+    for (const songId of songIds) {
         // Check if song exist
         const song = await Song.findById(songId);
-        if(!song) {
+        if (!song) {
             continue; // Skip if song doesn't exist 
         }
 
         // Check if song already in playlist
-        if(playlist.songs.includes(songId)) {
+        if (playlist.songs.includes(songId)) {
             continue; // Skip if song is already in playlist
         }
 
-        playlist.songs.push(songId); 
+        playlist.songs.push(songId);
     }
 
     await playlist.save();
@@ -246,29 +250,29 @@ const addSongsToPlaylist  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id/remove-song/:songId
 //@Access - Private
 
-const removeSongFromPlaylist  = asyncHandler(async (req, res) => {
+const removeSongFromPlaylist = asyncHandler(async (req, res) => {
     // Find the Playlist
     const playlist = await Playlist.findById(req.params.id);
-    if(!playlist) {
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found"); 
+        throw new Error("Playlist Not Found");
     }
 
     // Check if current user is reator or collaborator
-    if(!playlist.creator.equals(req.user._id) && !playlist.
-    collaborators.some((collab) => collab.equals(req.user._id))) {
-         res.status(StatusCodes.FORBIDDEN);
-        throw new Error("Not authorized to modify this playlist "); 
+    if (!playlist.creator.equals(req.user._id) && !playlist.
+        collaborators.some((collab) => collab.equals(req.user._id))) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error("Not authorized to modify this playlist ");
     }
 
     const songId = req.params.songId;
     // Check is song is in the playlist
-    if(!playlist.songs.includes(songId)) {
+    if (!playlist.songs.includes(songId)) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("Song is not in the playlist"); 
+        throw new Error("Song is not in the playlist");
     }
 
-    playlist.songs = plau=ylist.songs.filter((id) => id.toString() !== songId);
+    playlist.songs = plau = ylist.songs.filter((id) => id.toString() !== songId);
     await playlist.save();
     res.status(StatusCodes.OK).json({
         message: 'Song removed from Playlist'
@@ -279,35 +283,35 @@ const removeSongFromPlaylist  = asyncHandler(async (req, res) => {
 //@route - POST /api/playlists/:id/add-collaborator
 //@Access - Private
 
-const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
+const addCollaboratorToPlaylist = asyncHandler(async (req, res) => {
     const userId = req.body.userId;
-    if(!userId) {
+    if (!userId) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("User Id is required"); 
+        throw new Error("User Id is required");
     }
 
     // Check if user exists
     const user = await User.findById(userId);
-    if(!user) {
+    if (!user) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("User Not Found"); 
+        throw new Error("User Not Found");
     }
 
-     // Find the Playlist
+    // Find the Playlist
     const playlist = await Playlist.findById(req.params.id);
-    if(!playlist) {
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found"); 
+        throw new Error("Playlist Not Found");
     }
 
     // Only creator can add collaborator
-    if(!playlist.creator.equals(req.user._id)) {
+    if (!playlist.creator.equals(req.user._id)) {
         res.status(StatusCodes.FORBIDDEN);
         throw new Error('Only playlist creator can add collaborators ');
     }
 
     // Check if user is already collaborator
-    if(playlist.collaborators.includes(userId)) {
+    if (playlist.collaborators.includes(userId)) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error("User is alread a collaborator");
     }
@@ -315,7 +319,7 @@ const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
     // Add user to collaborator
     playlist.collaborators.push(userId);
     await playlist.save();
-    res.status(StatusCodes.OK).json(playlist); 
+    res.status(StatusCodes.OK).json(playlist);
 
 });
 
@@ -323,35 +327,35 @@ const addCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
 //@route - PUT /api/playlists/:id/remove-collabborator
 //@Access - Private
 
-const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
+const removeCollaboratorToPlaylist = asyncHandler(async (req, res) => {
     const userId = req.body.userId;
-    if(!userId) {
+    if (!userId) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error("User Id is required"); 
+        throw new Error("User Id is required");
     }
 
-     // Find the Playlist
+    // Find the Playlist
     const playlist = await Playlist.findById(req.params.id);
-    if(!playlist) {
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Playlist Not Found"); 
+        throw new Error("Playlist Not Found");
     }
 
     // Only creator can remove collaborator
-    if(!playlist.creator.equals(req.user._id)) {
+    if (!playlist.creator.equals(req.user._id)) {
         res.status(StatusCodes.FORBIDDEN);
         throw new Error('Only playlist creator can remove collaborators ');
     }
 
-     // Check if user is a collaborator
-    if(!playlist.collaborators.includes(userId)) {
+    // Check if user is a collaborator
+    if (!playlist.collaborators.includes(userId)) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error("User is not  a collaborator");
     }
 
     // remove user from collaborators
     playlist.collaborators = playlist.collaborators.filter(
-        (id) => id.toString() !== userId 
+        (id) => id.toString() !== userId
     );
     await playlist.save();
     res.status(StatusCodes.OK).json(playlist);
@@ -362,14 +366,14 @@ const removeCollaboratorToPlaylist  = asyncHandler(async (req, res) => {
 //@route - GET /api/playlists/featured?limit=10
 //@Access - Private
 
-const getFeaturedPlaylists   = asyncHandler(async (req, res) => {
+const getFeaturedPlaylists = asyncHandler(async (req, res) => {
     const { limit = 5 } = req.query;
     const filter = { isPublic: true };
     const playlists = await Playlist.find(filter)
         .limit(parseInt(limit))
         .sort({ followers: -1 })
         .populate('creator', 'name profilePicture')
-    res.status(StatusCodes.OK).json(playlists);  
+    res.status(StatusCodes.OK).json(playlists);
 
 });
 

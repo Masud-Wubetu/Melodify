@@ -3,41 +3,41 @@ const { StatusCodes } = require('http-status-codes');
 const Artist = require('../models/Artist');
 const Album = require('../models/Album');
 const Song = require('../models/Song');
-const  uploadToCloudinary = require('../utils/cloudinaryUpload')
+const uploadToCloudinary = require('../utils/cloudinaryUpload')
 
 //@desc - Create new Song
 //@route - POST /api/songs
 //@Access - Private/Admin
 
-const createSong =  asyncHandler(async (req, res) => {
-    
+const createSong = asyncHandler(async (req, res) => {
+
     const { title,
-            artistId,
-            albumId, 
-            duration, 
-            genre, 
-            lyrics, 
-            isExplicit, 
-            featuredArtists } = req.body;
+        artistId,
+        albumId,
+        duration,
+        genre,
+        lyrics,
+        isExplicit,
+        featuredArtists } = req.body;
 
     // Check if artist exists
     const artist = await Artist.findById(artistId);
-    if(!artist) {
+    if (!artist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Artist Not Found');
     }
 
     // Check album exists if albumId is provided
-    if(albumId) { 
+    if (albumId) {
         const album = await Album.findById(albumId);
-        if(!album) {
+        if (!album) {
             res.status(StatusCodes.NOT_FOUND);
             throw new Error('Album Not Found');
         }
     }
 
     // Upload audio file
-    if(!req.files || !req.files.audio) {
+    if (!req.files || !req.files.audio) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Audio is required');
     }
@@ -45,23 +45,23 @@ const createSong =  asyncHandler(async (req, res) => {
 
     // Upload cover image
     let coverImageUrl = "";
-    if(req.files && req.files.cover) {
+    if (req.files && req.files.cover) {
         const imageResult = await uploadToCloudinary(req.files.cover[0].path, 'melodify/covers');
         coverImageUrl = imageResult.secure_url;
     }
 
     // Create Song
     const song = await Song.create({
-            title,
-            artist: artistId,
-            album: albumId || null, 
-            duration,
-            audioUrl: audioResult.secure_url,
-            genre, 
-            lyrics, 
-            isExplicit: isExplicit === 'true', 
-            featuredArtists: featuredArtists ? JSON.parse(featuredArtists) : [], 
-            coverImage: coverImageUrl,
+        title,
+        artist: artistId,
+        album: albumId || null,
+        duration,
+        audioUrl: audioResult.secure_url,
+        genre,
+        lyrics,
+        isExplicit: isExplicit === 'true',
+        featuredArtists: featuredArtists ? JSON.parse(featuredArtists) : [],
+        coverImage: coverImageUrl,
     });
 
 
@@ -70,13 +70,13 @@ const createSong =  asyncHandler(async (req, res) => {
     await artist.save();
 
     //add song to album if albumId is provided
-    if(albumId) {
+    if (albumId) {
         const album = await Album.findById(albumId);
         album.songs.push(song._id);
         await album.save();
     }
 
-    res.status(StatusCodes.CREATED).json(song); 
+    res.status(StatusCodes.CREATED).json(song);
 
 });
 
@@ -85,13 +85,13 @@ const createSong =  asyncHandler(async (req, res) => {
 //@Access - Public
 
 const getSongs = asyncHandler(async (req, res) => {
-    const { genre, artist, search, page=1, limit=10 } = req.query;
+    const { genre, artist, search, page = 1, limit = 10 } = req.query;
     // Build filter object
     const filter = {};
-    if(genre) filter.genre = genre;
-    if(artist) filter.artist = artist;
+    if (genre) filter.genre = genre;
+    if (artist) filter.artist = artist;
 
-    if(search) {
+    if (search) {
         filter.$or = [
             { title: { $regex: search, $options: 'i' } },
             { genre: { $regex: search, $options: 'i' } },
@@ -104,12 +104,11 @@ const getSongs = asyncHandler(async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     // Get artists
     const songs = await Song.find(filter)
-        .sort({ releaseDate: -1 })
+        .sort({ createdAt: -1, _id: -1 })
         .limit(parseInt(limit))
         .skip(skip)
         .populate("artist", "name image")
-        .populate("album", "title coverImage")
-        .populate("artist", "name");
+        .populate("album", "title coverImage");
     res.status(StatusCodes.OK).json({
         songs,
         page: parseInt(page),
@@ -126,8 +125,8 @@ const getSongById = asyncHandler(async (req, res) => {
     const song = await Song.findById(req.params.id)
         .populate("artist", "name image bio")
         .populate("album", "title coverImage releasedDate")
-        .populate("featuredArtists", "name image"); 
-    if(song) {
+        .populate("featuredArtists", "name image");
+    if (song) {
         // Increment plays count 
         song.plays += 1;
         await song.save();
@@ -143,18 +142,18 @@ const getSongById = asyncHandler(async (req, res) => {
 //@route - PUT /api/songs/:id
 //@Access - Private/Admin
 
-const updateSong =  asyncHandler(async (req, res) => {
+const updateSong = asyncHandler(async (req, res) => {
     const { title,
-            artistId,
-            albumId, 
-            duration, 
-            genre, 
-            lyrics, 
-            isExplicit, 
-            featuredArtists } = req.body;
+        artistId,
+        albumId,
+        duration,
+        genre,
+        lyrics,
+        isExplicit,
+        featuredArtists } = req.body;
 
     const song = await Song.findById(req.params.id);
-    if(!song) {
+    if (!song) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Song not found');
     }
@@ -170,13 +169,13 @@ const updateSong =  asyncHandler(async (req, res) => {
     song.featuredArtists = featuredArtists ? JSON.parse(featuredArtists) : song.featuredArtists;
 
     // Update cover image if provided
-    if(req.files && req.files.cover) {
+    if (req.files && req.files.cover) {
         const imageResult = await uploadToCloudinary(req.files.cover[0].path, 'melodify/covers');
         song.coverImage = imageResult.secure_url;
     }
 
     // Update audio file if provided
-    if(req.files && req.files.audio) {
+    if (req.files && req.files.audio) {
         const audioResult = await uploadToCloudinary(req.files.audio[0].path, 'melodify/songs');
         song.audioUrl = audioResult.secure_url;
     }
@@ -190,25 +189,25 @@ const updateSong =  asyncHandler(async (req, res) => {
 //@route - DELETE /api/songs/:id
 //@Access - Private/Admin
 
-const deleteSong =  asyncHandler(async (req, res) => {
+const deleteSong = asyncHandler(async (req, res) => {
     const song = await Song.findById(req.params.id);
-    if(!song) {
-        res.status(StatusCodes.NOT_FOUND); 
+    if (!song) {
+        res.status(StatusCodes.NOT_FOUND);
         throw new Error('Song not found');
     }
 
     // Remove song from artist's songs
     await Artist.updateOne(
         { _id: song.artist },
-        { $pull: { songs: song._id }}
+        { $pull: { songs: song._id } }
     );
 
     // Remove song from album's songs
     if (song.album) {
         await Album.updateOne(
-        { _id: song.album },
-        { $pull: { songs: song._id }}
-    );
+            { _id: song.album },
+            { $pull: { songs: song._id } }
+        );
     }
 
     await song.deleteOne();
@@ -221,7 +220,7 @@ const deleteSong =  asyncHandler(async (req, res) => {
 //@route - GET /api/songs/top?limit=5
 //@Access - Public
 
-const getTopSongs =  asyncHandler(async (req, res) => {
+const getTopSongs = asyncHandler(async (req, res) => {
     const { limit } = req.query;
     // Empty filter to get all songs
     const filter = {}
@@ -229,7 +228,7 @@ const getTopSongs =  asyncHandler(async (req, res) => {
         .sort({ plays: -1 })
         .limit(limit)
         .populate('artist', 'name image')
-        .populate('artist', 'title coverImage');
+        .populate('album', 'title coverImage');
 
     res.status(StatusCodes.OK).json(songs);
 });
@@ -238,15 +237,15 @@ const getTopSongs =  asyncHandler(async (req, res) => {
 //@route - GET /api/songs/new-releases?limit=5
 //@Access - Public
 
-const getNewReleases =  asyncHandler(async (req, res) => {
-    const { limit } = req.query;
+const getNewReleases = asyncHandler(async (req, res) => {
+    const limit = parseInt(req.query.limit) || 8;
     // Empty filter to get all songs
     const filter = {}
     const songs = await Song.find(filter)
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, _id: -1 })
         .limit(limit)
         .populate('artist', 'name image')
-        .populate('artist', 'title coverImage');
+        .populate('album', 'title coverImage');
 
     res.status(StatusCodes.OK).json(songs);
 });
@@ -258,5 +257,5 @@ module.exports = {
     updateSong,
     deleteSong,
     getTopSongs,
-    getNewReleases 
+    getNewReleases
 }

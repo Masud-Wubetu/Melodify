@@ -5,32 +5,36 @@ const Artist = require('../models/Artist');
 const Playlist = require('../models/Playlist');
 const Song = require('../models/Song');
 const generateToken = require('../utils/generateToken');
-const  uploadToCloudinary  = require('../utils/cloudinaryUpload');
+const uploadToCloudinary = require('../utils/cloudinaryUpload');
 
 
 //@desc - register a new user
 //@route - POST /api/users/register
 //@Access - Public
 
-const registerUser = asyncHandler( async (req, res) => {
+const registerUser = asyncHandler(async (req, res) => {
     // Get the payload
-    const { name, email, password } = req.body;
+    const { name, email, password, adminSecretCode } = req.body;
 
     // Check if the user already exists
     const userExists = await User.findOne({ email });
-    if(userExists) {
+    if (userExists) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('User already exists')
     }
+
+    // Determine admin status
+    const isAdmin = adminSecretCode === process.env.MELODIFY_ADMIN_SECRET;
 
     // Create new user
     const user = await User.create({
         name,
         email,
-        password,    
+        password,
+        isAdmin,
     });
 
-    if(user) {
+    if (user) {
         res.status(StatusCodes.CREATED).json({
             _id: user._id,
             name: user.name,
@@ -38,9 +42,11 @@ const registerUser = asyncHandler( async (req, res) => {
             password: user.password,
             isAdmin: user.isAdmin,
             profilePicture: user.profilePicture,
+            token: generateToken(user._id)
         });
-    }else {
+    } else {
         res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Invalid user data');
     }
 });
 
@@ -52,9 +58,9 @@ const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     //Find the User
     const user = await User.findOne({ email });
-    
+
     // Check if user exists and match password
-    if(user && (await user.matchPassword(password))) {
+    if (user && (await user.matchPassword(password))) {
         res.status(StatusCodes.OK).json({
             _id: user._id,
             name: user.name,
@@ -70,7 +76,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 //Get user profile
-const getUserProfile =  asyncHandler(async (req, res) => {
+const getUserProfile = asyncHandler(async (req, res) => {
     //Find the user
     const user = await User.findById(req.user._id)
         .select("-password")
@@ -78,33 +84,33 @@ const getUserProfile =  asyncHandler(async (req, res) => {
         .populate("likedAlbums", "title artist coverImage")
         .populate("followedArtists", "name image")
         .populate("followedPlaylists", "name creator coverImage");
-        
-    if(user) {
+
+    if (user) {
         res.status(StatusCodes.OK).json(user);
-    }else {
+    } else {
         res.status(StatusCodes.NOT_FOUND)
         throw new Error("User Not Found!")
     }
 });
 
 //update user profile
-const updateUserProfile =  asyncHandler(async (req, res) => {
+const updateUserProfile = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
     const { name, email, password } = req.body;
-    if(user) {
+    if (user) {
         user.name = name || user.name;
         user.email = email || user.email;
         // Check if password is being updated
-        if(password) {
+        if (password) {
             user.password = password;
         }
-    
+
         // Upload Profile Picture if Provided
-        if(req.file) {
+        if (req.file) {
             const result = await uploadToCloudinary(req.file.path, "melodify/users");
             user.profilePicture = result.secure_url;
         }
-    
+
         const updatedUser = await user.save();
         res.status(StatusCodes.OK).json({
             _id: updatedUser._id,
@@ -117,27 +123,27 @@ const updateUserProfile =  asyncHandler(async (req, res) => {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('User Not Found');
     }
-    
+
 });
 //Toggle like song
-const toggleLikeSong =  asyncHandler(async (req, res) => {
+const toggleLikeSong = asyncHandler(async (req, res) => {
     const songId = req.params.id;
     const user = await User.findById(req.user._id);
     const song = await Song.findById(songId);
 
-     if(!song) {
+    if (!song) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Song Not Found');
     }
 
-    if(!user) {
+    if (!user) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('User Not Found');
     }
 
     // Check if song is already liked
     const songIndex = user.likedSongs.indexOf(songId);
-    if(songIndex === -1) {
+    if (songIndex === -1) {
         // Add song to liked songs
         user.likedSongs.push(songId);
 
@@ -148,7 +154,7 @@ const toggleLikeSong =  asyncHandler(async (req, res) => {
         user.likedSongs.splice(songIndex, 1);
 
         // Decrement like's count (ensure it doesn't go below 0)
-        if(song.likes > 0) {
+        if (song.likes > 0) {
             song.likes -= 1;
         }
     }
@@ -160,24 +166,24 @@ const toggleLikeSong =  asyncHandler(async (req, res) => {
     });
 });
 //Toggle follow artist
-const toggleFollowArtist =  asyncHandler(async (req, res) => {
+const toggleFollowArtist = asyncHandler(async (req, res) => {
     const artistId = req.params.id;
 
-    const artist = await Artist.findById(artistId );
-    if(!artist) {
+    const artist = await Artist.findById(artistId);
+    if (!artist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Artist Not Found');
     }
 
     const user = await User.findById(req.user._id);
-    if(!user) {
+    if (!user) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('User Not Found');
     }
 
     // Check if artist is already followed
     const artistIndex = user.followedArtists.indexOf(artistId);
-     if(artistIndex === -1) {
+    if (artistIndex === -1) {
         // Add artist to followed artist
         user.followedArtists.push(artistId);
 
@@ -189,7 +195,7 @@ const toggleFollowArtist =  asyncHandler(async (req, res) => {
         user.followedArtists.splice(artistIndex, 1);
 
         // Decrement follower's count (ensure it doesn't go below 0)
-        if(artist.followers > 0) {
+        if (artist.followers > 0) {
             artist.followers -= 1;
         }
     }
@@ -202,24 +208,24 @@ const toggleFollowArtist =  asyncHandler(async (req, res) => {
 
 });
 //Toggle follow playlist
-const toggleFollowPlaylist =  asyncHandler(async (req, res) => {
+const toggleFollowPlaylist = asyncHandler(async (req, res) => {
     const playlistId = req.params.id;
 
     const playlist = await Playlist.findById(playlistId);
-    if(!playlist) {
+    if (!playlist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Playlist Not Found');
     }
 
     const user = await User.findById(req.user._id);
-    if(!user) {
+    if (!user) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('User Not Found');
     }
 
     // Check if playlist is already followed
     const playlistIndex = user.followedPlaylists.indexOf(playlistId);
-     if(playlistIndex === -1) {
+    if (playlistIndex === -1) {
         // Add playlist to followed playlist
         user.followedPlaylists.push(playlistId);
 
@@ -231,7 +237,7 @@ const toggleFollowPlaylist =  asyncHandler(async (req, res) => {
         user.followedPlaylists.splice(playlistIndex, 1);
 
         // Decrement follower's count (ensure it doesn't go below 0)
-        if(playlist.followers > 0) {
+        if (playlist.followers > 0) {
             playlist.followers -= 1;
         }
     }
@@ -244,6 +250,37 @@ const toggleFollowPlaylist =  asyncHandler(async (req, res) => {
 
 });
 
+// Get all users (Admin only)
+const getUsers = asyncHandler(async (req, res) => {
+    const users = await User.find({}).select("-password");
+    res.status(StatusCodes.OK).json(users);
+});
+
+// Delete user (Admin only)
+const deleteUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (user) {
+        await user.deleteOne();
+        res.status(StatusCodes.OK).json({ message: 'User removed' });
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('User not found');
+    }
+});
+
+// Toggle admin status (Admin only)
+const toggleAdminStatus = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (user) {
+        user.isAdmin = req.body.isAdmin;
+        await user.save();
+        res.status(StatusCodes.OK).json({ message: 'User updated' });
+    } else {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('User not found');
+    }
+});
+
 module.exports = {
     registerUser,
     loginUser,
@@ -252,4 +289,7 @@ module.exports = {
     toggleLikeSong,
     toggleFollowArtist,
     toggleFollowPlaylist,
+    getUsers,
+    deleteUser,
+    toggleAdminStatus,
 }

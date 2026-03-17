@@ -3,7 +3,7 @@ const { StatusCodes } = require('http-status-codes');
 const Artist = require('../models/Artist');
 const Album = require('../models/Album');
 const Song = require('../models/Song');
-const  uploadToCloudinary = require('../utils/cloudinaryUpload')
+const uploadToCloudinary = require('../utils/cloudinaryUpload')
 
 //@desc - Create new Artist
 //@route - POST /api/artist
@@ -11,28 +11,28 @@ const  uploadToCloudinary = require('../utils/cloudinaryUpload')
 
 const createArtist = asyncHandler(async (req, res) => {
     // Check if req.body is defined
-    if(!req.body) {
+    if (!req.body) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Request body is required');
     }
     const { name, bio, genres } = req.body;
 
     //Validations
-    if(!name || !bio || !genres) {
+    if (!name || !bio || !genres) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Name, Bio, Genres are required');
     }
 
     // Check if Artist already exists
     const existingArtist = await Artist.findOne({ name });
-    if(existingArtist) {
+    if (existingArtist) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Artist already exists');
     }
 
     //upload artist image if provided
     let imageUrl = "";
-    if(req.file) {
+    if (req.file) {
         const result = await uploadToCloudinary(req.file.path, 'melodify/artists');
         imageUrl = result.secure_url;
     }
@@ -53,11 +53,11 @@ const createArtist = asyncHandler(async (req, res) => {
 //@Access - Public
 
 const getArtists = asyncHandler(async (req, res) => {
-    const { genre, search, page=1, limit=10 } = req.query;
+    const { genre, search, page = 1, limit = 10 } = req.query;
     // Build filter object
     const filter = {};
-    if(genre) filter.genres = {$in:[genre]};
-    if(search) {
+    if (genre) filter.genres = { $in: [genre] };
+    if (search) {
         filter.$or = [
             { name: { $regex: search, $options: 'i' } },
             { bio: { $regex: search, $options: 'i' } },
@@ -73,12 +73,12 @@ const getArtists = asyncHandler(async (req, res) => {
         .sort({ followers: -1 })
         .limit(parseInt(limit))
         .skip(skip)
-        res.status(StatusCodes.OK).json({
-            artists,
-            page: parseInt(page),
-            pages: Math.ceil(count / parseInt(limit)),
-            totalArtist: count,
-        });
+    res.status(StatusCodes.OK).json({
+        artists,
+        page: parseInt(page),
+        pages: Math.ceil(count / parseInt(limit)),
+        totalArtist: count,
+    });
 });
 
 //!@desc - Get artist by id
@@ -87,7 +87,7 @@ const getArtists = asyncHandler(async (req, res) => {
 
 const getArtistsById = asyncHandler(async (req, res) => {
     const artist = await Artist.findById(req.params.id);
-    if(artist) {
+    if (artist) {
         res.status(StatusCodes.OK).json(artist);
     } else {
         res.status(StatusCodes.NOT_FOUND);
@@ -99,10 +99,10 @@ const getArtistsById = asyncHandler(async (req, res) => {
 //@route - PUT /api/artist/id
 //@Access - Private/Admin
 
-const updateArtist =  asyncHandler(async (req, res) => {
+const updateArtist = asyncHandler(async (req, res) => {
     const { name, bio, genres, isVerified } = req.body;
     const artist = await Artist.findById(req.params.id);
-    if(!artist) {
+    if (!artist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Artist Not Found');
     }
@@ -110,11 +110,11 @@ const updateArtist =  asyncHandler(async (req, res) => {
     artist.name = name || artist.name;
     artist.bio = bio || artist.bio;
     artist.genres = genres || artist.genres;
-    artist.isVerified = 
+    artist.isVerified =
         isVerified !== undefined ? isVerified === 'true' : artist.
-        isVerified;
+            isVerified;
     // Update image if provided
-    if(req.file) {
+    if (req.file) {
         const result = await uploadToCloudinary(req.file.path, 'melodify/artists');
         artist.image = result.secure_url;
     }
@@ -127,9 +127,9 @@ const updateArtist =  asyncHandler(async (req, res) => {
 //@route - DELETE /api/artist/id
 //@Access - Private/Admin
 
-const deleteArtist =  asyncHandler(async (req, res) => {
+const deleteArtist = asyncHandler(async (req, res) => {
     const artist = await Artist.findById(req.params.id);
-     if(!artist) {
+    if (!artist) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Artist Not Found');
     }
@@ -139,7 +139,7 @@ const deleteArtist =  asyncHandler(async (req, res) => {
     // Delete all albums by artist
     await Album.deleteMany({ artist: artist._id });
     await artist.deleteOne();
-    res.status(StatusCodes.OK).json({ message: 'Artist removed'});
+    res.status(StatusCodes.OK).json({ message: 'Artist removed' });
 });
 
 //@desc - Get 10 top artists by followers
@@ -165,7 +165,7 @@ const getArtistTopSongs = asyncHandler(async (req, res) => {
         .limit(parseInt(limit))
         .populate('album', 'title coverImage');
 
-    if(songs.length > 0) {
+    if (songs.length > 0) {
         res.status(StatusCodes.OK).json(songs);
     } else {
         res.status(StatusCodes.NOT_FOUND);
