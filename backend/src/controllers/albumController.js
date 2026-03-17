@@ -169,6 +169,35 @@ const removeSongFromAlbum = asyncHandler(async (req, res) => {
     }
 });
 
+//@desc - add Songs to album
+//@route - PUT /api/albums/:id/add-songs
+//@Access - Private/Admin
+const addSongsToAlbum = asyncHandler(async (req, res) => {
+    const { songIds } = req.body;
+    const albumId = req.params.id;
+
+    if (!songIds || !Array.isArray(songIds)) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Please provide an array of song IDs');
+    }
+
+    try {
+        await prisma.album.update({
+            where: { id: albumId },
+            data: {
+                songs: {
+                    connect: songIds.map(id => ({ id }))
+                }
+            }
+        });
+
+        res.status(StatusCodes.OK).json({ message: 'Songs added to album' });
+    } catch (error) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Album or Song Not Found');
+    }
+});
+
 //@desc - get new releases
 //@route - GET /api/albums/new-releases
 //@Access - Public
@@ -190,6 +219,7 @@ module.exports = {
     getAlbumById,
     updateAlbum,
     deleteAlbum,
+    addSongsToAlbum,
     removeSongFromAlbum,
     getNewReleases,
 };

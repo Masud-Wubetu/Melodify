@@ -225,6 +225,77 @@ const removeSongFromPlaylist = asyncHandler(async (req, res) => {
     res.status(StatusCodes.OK).json({ message: 'Song removed from playlist' });
 });
 
+//@desc - add collaborator to playlist
+//@route - PUT /api/playlists/:id/add-collaborator
+//@Access - Private
+const addCollaboratorToPlaylist = asyncHandler(async (req, res) => {
+    const { userId } = req.body;
+    const playlistId = req.params.id;
+
+    const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
+    if (!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Playlist Not Found');
+    }
+
+    if (playlist.creatorId !== req.user.id) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('Only the creator can add collaborators');
+    }
+
+    await prisma.playlist.update({
+        where: { id: playlistId },
+        data: {
+            collaborators: { connect: { id: userId } }
+        }
+    });
+
+    res.status(StatusCodes.OK).json({ message: 'Collaborator added' });
+});
+
+//@desc - remove collaborator from playlist
+//@route - PUT /api/playlists/:id/remove-collaborator
+//@Access - Private
+const removeCollaboratorToPlaylist = asyncHandler(async (req, res) => {
+    const { userId } = req.body;
+    const playlistId = req.params.id;
+
+    const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
+    if (!playlist) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Playlist Not Found');
+    }
+
+    if (playlist.creatorId !== req.user.id) {
+        res.status(StatusCodes.FORBIDDEN);
+        throw new Error('Only the creator can remove collaborators');
+    }
+
+    await prisma.playlist.update({
+        where: { id: playlistId },
+        data: {
+            collaborators: { disconnect: { id: userId } }
+        }
+    });
+
+    res.status(StatusCodes.OK).json({ message: 'Collaborator removed' });
+});
+
+//@desc - get featured playlists
+//@route - GET /api/playlists/featured
+//@Access - Public
+const getFeaturedPlaylists = asyncHandler(async (req, res) => {
+    const playlists = await prisma.playlist.findMany({
+        where: { isPublic: true },
+        take: 10,
+        orderBy: { followersCount: 'desc' },
+        include: { creator: { select: { name: true } } }
+    });
+
+    const mappedPlaylists = playlists.map(p => ({ ...p, _id: p.id }));
+    res.status(StatusCodes.OK).json(mappedPlaylists);
+});
+
 module.exports = {
     createPlaylist,
     getPlaylists,
@@ -234,4 +305,7 @@ module.exports = {
     deletePlaylist,
     addSongToPlaylist,
     removeSongFromPlaylist,
+    addCollaboratorToPlaylist,
+    removeCollaboratorToPlaylist,
+    getFeaturedPlaylists,
 };

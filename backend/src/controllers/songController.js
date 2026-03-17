@@ -123,9 +123,16 @@ const updateSong = asyncHandler(async (req, res) => {
         albumId: albumId !== undefined ? (albumId || null) : existingSong.albumId,
     };
 
-    if (req.file) {
-        const result = await uploadToCloudinary(req.file.path, 'melodify/songs', 'auto');
-        dataToUpdate.audioUrl = result.secure_url;
+    if (req.files) {
+        if (req.files['audio'] && req.files['audio'][0]) {
+            const result = await uploadToCloudinary(req.files['audio'][0].path, 'melodify/songs', 'auto');
+            dataToUpdate.audioUrl = result.secure_url;
+        }
+
+        if (req.files['cover'] && req.files['cover'][0]) {
+            const result = await uploadToCloudinary(req.files['cover'][0].path, 'melodify/songs', 'image');
+            dataToUpdate.coverImage = result.secure_url;
+        }
     }
 
     const updatedSong = await prisma.song.update({
