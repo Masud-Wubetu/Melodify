@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Search, Library, Music, Mic2, Disc3 } from 'lucide-react';
+import { Home, Search, Library, Music, Mic2, Disc3, ListMusic } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import Profile from '../pages/Profile';
 
@@ -36,8 +36,13 @@ const Sidebar = () => {
                 </div>
 
                 <div className="p-2 space-y-1">
+                    {/* User Navigation */}
+                    <NavLink to="/playlists" className={({ isActive }) => `flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-zinc-800 text-sm font-medium ${isActive ? 'bg-zinc-800 text-white' : 'text-zinc-400'}`}>
+                        <ListMusic className="h-4 w-4" /> Your Playlists
+                    </NavLink>
+
                     {/* Admin Navigation (Conditional) */}
-                    <div className="px-2 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                    <div className="px-2 py-3 mt-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                         Management
                     </div>
                     <NavLink to="/artists" className={({ isActive }) => `flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-zinc-800 text-sm font-medium ${isActive ? 'bg-zinc-800 text-white' : 'text-zinc-400'}`}>

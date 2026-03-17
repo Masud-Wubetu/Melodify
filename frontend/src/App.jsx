@@ -18,6 +18,10 @@ import SongList from './pages/Songs/SongList';
 import SongDetail from './pages/Songs/SongDetail';
 import SongForm from './pages/Songs/SongForm';
 
+import PlaylistList from './pages/Playlists/PlaylistList';
+import PlaylistDetail from './pages/Playlists/PlaylistDetail';
+import PlaylistForm from './pages/Playlists/PlaylistForm';
+
 const Dashboard = () => <div className="p-8"><h1 className="text-3xl font-bold mb-6">Good morning</h1></div>;
 
 function App() {
@@ -47,8 +51,13 @@ function App() {
 
           <Route path="/songs" element={<SongList />} />
           <Route path="/songs/create" element={<SongForm />} />
-          <Route "/songs/:id" element={<SongDetail />} />
+          <Route path="/songs/:id" element={<SongDetail />} />
           <Route path="/songs/edit/:id" element={<SongForm />} />
+
+          <Route path="/playlists" element={<PlaylistList />} />
+          <Route path="/playlists/create" element={<PlaylistForm />} />
+          <Route path="/playlists/:id" element={<PlaylistDetail />} />
+          <Route path="/playlists/edit/:id" element={<PlaylistForm />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" />} />
