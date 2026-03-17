@@ -1,20 +1,16 @@
 const asyncHandler = require('express-async-handler');
-const User = require('../models/User');
-const Song = require('../models/Song');
-const Artist = require('../models/Artist');
-const Album = require('../models/Album');
-const Playlist = require('../models/Playlist');
+const prisma = require('../lib/prisma');
 
 // @desc    Get admin stats
 // @route   GET /api/admin/stats
 // @access  Private/Admin
 const getAdminStats = asyncHandler(async (req, res) => {
     const [userCount, songCount, artistCount, albumCount, playlistCount] = await Promise.all([
-        User.countDocuments(),
-        Song.countDocuments(),
-        Artist.countDocuments(),
-        Album.countDocuments(),
-        Playlist.countDocuments(),
+        prisma.user.count(),
+        prisma.song.count(),
+        prisma.artist.count(),
+        prisma.album.count(),
+        prisma.playlist.count(),
     ]);
 
     res.json({
