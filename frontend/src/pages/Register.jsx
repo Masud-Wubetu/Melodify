@@ -9,7 +9,7 @@ import apiClient from '../api/client';
 
 const Register = () => {
     const [formData, setFormData] = useState({
-        username: '',
+        name: '',
         email: '',
         password: '',
         confirmPassword: ''
@@ -28,7 +28,7 @@ const Register = () => {
         e.preventDefault();
         setFormError('');
 
-        if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
+        if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
             setFormError('Please fill in all fields');
             return;
         }
@@ -41,7 +41,7 @@ const Register = () => {
         setIsLoading(true);
         try {
             await apiClient.post('/users/register', {
-                username: formData.username,
+                name: formData.name,
                 email: formData.email,
                 password: formData.password
             });
@@ -80,11 +80,11 @@ const Register = () => {
 
                         <div className="space-y-4">
                             <Input
-                                label="Username"
+                                label="Full Name"
                                 type="text"
-                                name="username"
-                                placeholder="How should we call you?"
-                                value={formData.username}
+                                name="name"
+                                placeholder="Your full name"
+                                value={formData.name}
                                 onChange={handleChange}
                                 disabled={isLoading}
                             />

@@ -14,19 +14,29 @@ export const useAuthStore = create(
             login: async (email, password) => {
                 set({ isLoading: true, error: null });
                 try {
-                    // Send request down to the actual API
+                    // Backend returns: { _id, name, email, isAdmin, profilePicture, token }
                     const response = await apiClient.post('/users/login', { email, password });
+                    const userData = {
+                        _id: response._id,
+                        name: response.name,
+                        username: response.name, // alias so UI that reads .username works too
+                        email: response.email,
+                        isAdmin: response.isAdmin,
+                        profilePicture: response.profilePicture,
+                        role: response.isAdmin ? 'admin' : 'user',
+                    };
                     set({
-                        user: response.user || { id: response._id, ...response }, // adapt to actual response
+                        user: userData,
                         token: response.token,
                         isAuthenticated: true,
                         isLoading: false,
+                        error: null,
                     });
                     localStorage.setItem('token', response.token);
                     return true;
                 } catch (error) {
                     set({
-                        error: error.response?.data?.message || 'Login failed',
+                        error: error.response?.data?.message || 'Invalid email or password',
                         isLoading: false
                     });
                     return false;

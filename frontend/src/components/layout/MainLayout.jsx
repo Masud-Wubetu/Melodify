@@ -1,7 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { Home, Search, Library, Music, Mic2, Disc3, ListMusic } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
-import Profile from '../pages/Profile';
+import { useAuthStore } from '../../store/authStore';
 
 const Sidebar = () => {
     return (
