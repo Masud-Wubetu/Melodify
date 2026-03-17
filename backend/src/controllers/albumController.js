@@ -1,262 +1,187 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
-const Artist = require('../models/Artist');
-const Album = require('../models/Album');
-const Song = require('../models/Song');
-const uploadToCloudinary = require('../utils/cloudinaryUpload')
+const prisma = require('../lib/prisma');
+const { uploadToCloudinary } = require('../middlewares/upload');
 
-//@desc - Create new Album
+//@desc - create Album
 //@route - POST /api/albums
 //@Access - Private/Admin
-
 const createAlbum = asyncHandler(async (req, res) => {
+    const { title, artistId, releaseDate, genre, description, isExplicit } = req.body;
 
-    if (!req.body) {
+    if (!title || !artistId) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Request body is required');
-    }
-    const { title, artistId, releaseDate, genre, description,
-        isExplicit } = req.body;
-    // Validations
-    if (!title || !artistId || !releaseDate || !genre || !description) {
-        es.status(StatusCodes.BAD_REQUEST);
-        throw new Error(
-            'title, artistId, releaseDate, genre and description are required.'
-        );
+        throw new Error('Album title and Artist are required');
     }
 
-    if (title.length < 3 || title.length > 100) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Title must be between 3 and 100 characters');
-    }
-
-    if (description.length < 10 || description.length > 200) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Description must be between 10 and 200 characters');
-    }
-
-
-    // Check if album already exists
-    const albumExists = await Album.findOne({ title });
-    if (albumExists) {
-        res.status(StatusCodes.CONFLICT);
-        throw new Error('Album already exist.');
-    }
-
-    // Check if artists already exists
-    const artist = await Artist.findById(artistId);
+    // Check if artist exists
+    const artist = await prisma.artist.findUnique({ where: { id: artistId } });
     if (!artist) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Artist Not FOUND.');
+        throw new Error('Artist Not Found');
     }
 
-    // upload coverImage if provided
-    let coverImageUrl = ""
+    let imageUrl = 'https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg';
     if (req.file) {
         const result = await uploadToCloudinary(req.file.path, 'melodify/albums');
-        coverImageUrl = result.secure_url;
+        imageUrl = result.secure_url;
     }
-    // Create album
-    const album = await Album.create({
-        title,
-        artist: artistId,
-        releaseDate: releaseDate ? new Date(releaseDate) : Date.now(),
-        coverImage: coverImageUrl || undefined,
-        genre,
-        description,
-        isExplicit: isExplicit === 'true'
+
+    const album = await prisma.album.create({
+        data: {
+            title,
+            artistId,
+            genre,
+            description,
+            isExplicit: isExplicit === 'true' || isExplicit === true,
+            coverImage: imageUrl,
+            releaseDate: releaseDate ? new Date(releaseDate) : undefined,
+        },
+        include: { artist: { select: { name: true } } }
     });
 
-    // add album to artist's albums
-    artist.albums.push(album._id);
-    await artist.save();
-    res.status(StatusCodes.CREATED).json(album);
-
+    res.status(StatusCodes.CREATED).json({ ...album, _id: album.id });
 });
 
-//@desc - Get all Albums with filtering and pagination
-//@route - GET /api/albums?genre=Rock&artist=892457&search=dark&page=1&limit=10
+//@desc - Get all albums
+//@route - GET /api/albums
 //@Access - Public
-
 const getAlbums = asyncHandler(async (req, res) => {
-    const { genre, artist, search, page = 1, limit = 10 } = req.query;
-    // Build filter object
-    const filter = {};
-    if (genre) filter.genre = genre;
-    if (artist) filter.artist = artist;
+    const { page = 1, limit = 10, search = '', genre } = req.query;
 
-    if (search) {
-        filter.$or = [
-            { title: { $regex: search, $options: 'i' } },
-            { genre: { $regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } },
-        ];
-    }
+    const filter = {
+        AND: [
+            search ? { title: { contains: search, mode: 'insensitive' } } : {},
+            genre ? { genre: { contains: genre, mode: 'insensitive' } } : {},
+        ]
+    };
 
-    // Count total album with the filter
-    const count = await Album.countDocuments(filter);
-    // Pagination
+    const count = await prisma.album.count({ where: filter });
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    // Get artists
-    const albums = await Album.find(filter)
-        .sort({ releaseDate: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
-        .populate("artist", "name image")
+
+    const albums = await prisma.album.findMany({
+        where: filter,
+        orderBy: { releaseDate: 'desc' },
+        skip,
+        take: parseInt(limit),
+        include: { artist: { select: { name: true, image: true } } }
+    });
+
+    const mappedAlbums = albums.map(a => ({ ...a, _id: a.id }));
+
     res.status(StatusCodes.OK).json({
-        albums,
+        albums: mappedAlbums,
         page: parseInt(page),
         pages: Math.ceil(count / parseInt(limit)),
         totalAlbum: count,
     });
 });
 
-//!@desc - Get albums by id 
+//@desc - Get album by id
 //@route - GET /api/albums/:id
 //@Access - Public
-
 const getAlbumById = asyncHandler(async (req, res) => {
-    const album = await Album.findById(req.params.id)
-        .populate("artist", "name image bio")
-        .populate({
-            path: "songs",
-            populate: { path: "artist", select: "name" }
-        });
+    const album = await prisma.album.findUnique({
+        where: { id: req.params.id },
+        include: {
+            artist: { select: { id: true, name: true, image: true, bio: true } },
+            songs: {
+                orderBy: { releaseDate: 'asc' },
+                include: { artist: { select: { name: true } } }
+            }
+        }
+    });
+
     if (album) {
-        res.status(StatusCodes.OK).json(album);
+        res.status(StatusCodes.OK).json({ ...album, _id: album.id });
     } else {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Album Not found');
-    }
-});
-
-//@desc - Update Album details
-//@route - PUT /api/albums/:id
-//@Access - Private/Admin
-
-const updateAlbum = asyncHandler(async (req, res) => {
-    const { title, releaseDate, genre, description, isExplicit } = req.body;
-    const album = await Album.findById(req.params.id);
-    if (!album) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Album Not Found');
     }
-    // Update Artist details
-    album.title = title || album.title;
-    album.releaseDate = releaseDate || album.releaseDate;
-    album.genre = genre || album.genre;
-    album.description = description || album.description;
-    album.isExplicit = isExplicit !== undefined ? isExplicit === 'true' : album.isExplicit;
+});
 
-    // Update image if provided
+//@desc - update Album
+//@route - PUT /api/albums/:id
+//@Access - Private/Admin
+const updateAlbum = asyncHandler(async (req, res) => {
+    const { title, genre, description, isExplicit, releaseDate } = req.body;
+    const albumId = req.params.id;
+
+    const existingAlbum = await prisma.album.findUnique({ where: { id: albumId } });
+    if (!existingAlbum) {
+        res.status(StatusCodes.NOT_FOUND);
+        throw new Error('Album Not Found');
+    }
+
+    let dataToUpdate = {
+        title: title || existingAlbum.title,
+        genre: genre || existingAlbum.genre,
+        description: description || existingAlbum.description,
+        isExplicit: isExplicit !== undefined ? (isExplicit === 'true' || isExplicit === true) : existingAlbum.isExplicit,
+        releaseDate: releaseDate ? new Date(releaseDate) : existingAlbum.releaseDate,
+    };
+
     if (req.file) {
         const result = await uploadToCloudinary(req.file.path, 'melodify/albums');
-        album.coverImage = result.secure_url;
+        dataToUpdate.coverImage = result.secure_url;
     }
-    // reSave
-    const updatedAlbum = await album.save();
-    res.status(StatusCodes.OK).json(updatedAlbum);
+
+    const updatedAlbum = await prisma.album.update({
+        where: { id: albumId },
+        data: dataToUpdate,
+        include: { artist: { select: { name: true } } }
+    });
+
+    res.status(StatusCodes.OK).json({ ...updatedAlbum, _id: updatedAlbum.id });
 });
 
 //@desc - Delete Album
 //@route - DELETE /api/albums/:id
 //@Access - Private/Admin
-
 const deleteAlbum = asyncHandler(async (req, res) => {
-
-    const album = await Album.findById(req.params.id);
-    if (!album) {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error("Album Not Found!");
-    }
-
-    // Remove album from artist's albums
-    await Artist.updateOne(
-        { _id: album.artist },
-        { $pull: { albums: album._id } }
-    );
-
-    // Update Songs to remove album reference
-    await Song.updateMany(
-        { album: album._id },
-        { $unset: { album: 1 } }
-    );
-    await album.deleteOne();
-    res.status(StatusCodes.OK).json({
-        message: "Album removed"
-    });
-});
-
-//@desc - Add Songs to Album
-//@route - PUT /api/albums/:id/add-songs
-//@Access - Private/Admin
-
-const addSongsToAlbum = asyncHandler(async (req, res) => {
-    const { songIds } = req.body;
-    if (!songIds || !Array.isArray(songIds)) {
-        res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Song Ids must be an array');
-    }
-
-    const album = await Album.findById(req.params.id);
-    if (!album) {
+    try {
+        await prisma.album.delete({
+            where: { id: req.params.id }
+        });
+        res.status(StatusCodes.OK).json({ message: 'Album removed' });
+    } catch (error) {
         res.status(StatusCodes.NOT_FOUND);
         throw new Error('Album Not Found');
     }
-
-    for (const songId of songIds) {
-        const song = await Song.findById(songId);
-        if (song) {
-            // Check if already in album
-            if (!album.songs.includes(songId)) {
-                album.songs.push(songId);
-            }
-            // Update song reference
-            song.album = album._id;
-            await song.save();
-        }
-    }
-
-    await album.save();
-    res.status(StatusCodes.OK).json(album);
 });
 
-//@desc - remove song from Album
-//@route - DELETE /api/albums/:id/remove-song/:songId
+//@desc - delete Song from album
+//@route - DELETE /api/albums/:id/songs/:songId
 //@Access - Private/Admin
-
 const removeSongFromAlbum = asyncHandler(async (req, res) => {
-    const album = await Album.findById(req.params.id);
-    if (!album) {
+    const { id, songId } = req.params;
+
+    try {
+        await prisma.song.update({
+            where: { id: songId },
+            data: { albumId: null }
+        });
+
+        res.status(StatusCodes.OK).json({ message: 'Song removed from album' });
+    } catch (error) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Album Not Found');
+        throw new Error('Album or Song Not Found');
     }
-
-    const { songId } = req.params;
-    album.songs = album.songs.filter(id => id.toString() !== songId);
-    await album.save();
-
-    // Remove album reference from song
-    const song = await Song.findById(songId);
-    if (song) {
-        song.album = undefined;
-        await song.save();
-    }
-
-    res.status(StatusCodes.OK).json({ message: 'Song removed from album' });
 });
 
-//@desc - Get new releases (recently added albums)
-//@route - GET /api/albums/new-releases?limit=10
+//@desc - get new releases
+//@route - GET /api/albums/new-releases
 //@Access - Public
-
 const getNewReleases = asyncHandler(async (req, res) => {
-    const { limit = 8 } = req.query;
-    const albums = await Album.find()
-        .sort({ createdAt: -1 })
-        .limit(parseInt(limit))
-        .populate('artist', 'name image');
-    res.status(StatusCodes.OK).json(albums);
+    const limit = parseInt(req.query.limit) || 8;
+    const albums = await prisma.album.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: { artist: { select: { name: true, image: true } } }
+    });
+
+    const mappedAlbums = albums.map(a => ({ ...a, _id: a.id }));
+    res.status(StatusCodes.OK).json(mappedAlbums);
 });
 
 module.exports = {
@@ -265,7 +190,6 @@ module.exports = {
     getAlbumById,
     updateAlbum,
     deleteAlbum,
-    addSongsToAlbum,
     removeSongFromAlbum,
     getNewReleases,
-}
+};

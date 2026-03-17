@@ -1,116 +1,79 @@
 const asyncHandler = require('express-async-handler');
 const { StatusCodes } = require('http-status-codes');
-const Artist = require('../models/Artist');
-const Album = require('../models/Album');
-const Song = require('../models/Song');
-const uploadToCloudinary = require('../utils/cloudinaryUpload')
+const prisma = require('../lib/prisma');
+const { uploadToCloudinary } = require('../middlewares/upload');
 
-//@desc - Create new Song
+//@desc - create Song
 //@route - POST /api/songs
 //@Access - Private/Admin
-
 const createSong = asyncHandler(async (req, res) => {
+    const { title, artistId, albumId, duration, genre, isExplicit, releaseDate } = req.body;
 
-    const { title,
-        artistId,
-        albumId,
-        duration,
-        genre,
-        lyrics,
-        isExplicit,
-        featuredArtists } = req.body;
-
-    // Check if artist exists
-    const artist = await Artist.findById(artistId);
-    if (!artist) {
-        res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Artist Not Found');
-    }
-
-    // Check album exists if albumId is provided
-    if (albumId) {
-        const album = await Album.findById(albumId);
-        if (!album) {
-            res.status(StatusCodes.NOT_FOUND);
-            throw new Error('Album Not Found');
-        }
-    }
-
-    // Upload audio file
-    if (!req.files || !req.files.audio) {
+    if (!title || !artistId || !duration) {
         res.status(StatusCodes.BAD_REQUEST);
-        throw new Error('Audio is required');
-    }
-    const audioResult = await uploadToCloudinary(req.files.audio[0].path, 'melodify/songs');
-
-    // Upload cover image
-    let coverImageUrl = "";
-    if (req.files && req.files.cover) {
-        const imageResult = await uploadToCloudinary(req.files.cover[0].path, 'melodify/covers');
-        coverImageUrl = imageResult.secure_url;
+        throw new Error('Please include all required fields (title, artist, duration)');
     }
 
-    // Create Song
-    const song = await Song.create({
-        title,
-        artist: artistId,
-        album: albumId || null,
-        duration,
-        audioUrl: audioResult.secure_url,
-        genre,
-        lyrics,
-        isExplicit: isExplicit === 'true',
-        featuredArtists: featuredArtists ? JSON.parse(featuredArtists) : [],
-        coverImage: coverImageUrl,
+    let audioUrl = '';
+    if (req.file) {
+        const result = await uploadToCloudinary(req.file.path, 'melodify/songs', 'auto');
+        audioUrl = result.secure_url;
+    } else {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Audio file is required');
+    }
+
+    const song = await prisma.song.create({
+        data: {
+            title,
+            artistId,
+            albumId: albumId || null,
+            duration,
+            genre,
+            audioUrl,
+            isExplicit: isExplicit === 'true' || isExplicit === true,
+            releaseDate: releaseDate ? new Date(releaseDate) : undefined,
+        },
+        include: {
+            artist: { select: { name: true } },
+            album: { select: { title: true, coverImage: true } }
+        }
     });
 
-
-    // Add song to artist's songs
-    artist.songs.push(song._id);
-    await artist.save();
-
-    //add song to album if albumId is provided
-    if (albumId) {
-        const album = await Album.findById(albumId);
-        album.songs.push(song._id);
-        await album.save();
-    }
-
-    res.status(StatusCodes.CREATED).json(song);
-
+    res.status(StatusCodes.CREATED).json({ ...song, _id: song.id });
 });
 
-//@desc - get all songs with filtering and pagination
-//@route - GET /api/songs?genre=quran&artist=87235&search=comfort&page=1&limit=10
+//@desc - Get all songs with pagination
+//@route - GET /api/songs
 //@Access - Public
-
 const getSongs = asyncHandler(async (req, res) => {
-    const { genre, artist, search, page = 1, limit = 10 } = req.query;
-    // Build filter object
-    const filter = {};
-    if (genre) filter.genre = genre;
-    if (artist) filter.artist = artist;
+    const { page = 1, limit = 10, search = '', genre } = req.query;
 
-    if (search) {
-        filter.$or = [
-            { title: { $regex: search, $options: 'i' } },
-            { genre: { $regex: search, $options: 'i' } },
-        ];
-    }
+    const filter = {
+        AND: [
+            search ? { title: { contains: search, mode: 'insensitive' } } : {},
+            genre ? { genre: { contains: genre, mode: 'insensitive' } } : {},
+        ]
+    };
 
-    // Count total album with the filter
-    const count = await Song.countDocuments(filter);
-    // Pagination
+    const count = await prisma.song.count({ where: filter });
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    // Get artists
-    const songs = await Song.find(filter)
-        .sort({ createdAt: -1, _id: -1 })
-        .limit(parseInt(limit))
-        .skip(skip)
-        .populate("artist", "name image")
-        .populate("album", "title coverImage");
+
+    const songs = await prisma.song.findMany({
+        where: filter,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit),
+        include: {
+            artist: { select: { name: true, image: true } },
+            album: { select: { title: true, coverImage: true } }
+        }
+    });
+
+    const mappedSongs = songs.map(s => ({ ...s, _id: s.id }));
+
     res.status(StatusCodes.OK).json({
-        songs,
+        songs: mappedSongs,
         page: parseInt(page),
         pages: Math.ceil(count / parseInt(limit)),
         totalSong: count,
@@ -120,134 +83,112 @@ const getSongs = asyncHandler(async (req, res) => {
 //@desc - get a Song by Id
 //@route - GET /api/songs/:id
 //@Access - Public
-
 const getSongById = asyncHandler(async (req, res) => {
-    const song = await Song.findById(req.params.id)
-        .populate("artist", "name image bio")
-        .populate("album", "title coverImage releasedDate")
-        .populate("featuredArtists", "name image");
-    if (song) {
-        // Increment plays count 
-        song.plays += 1;
-        await song.save();
+    const song = await prisma.song.findUnique({
+        where: { id: req.params.id },
+        include: {
+            artist: { select: { id: true, name: true, image: true } },
+            album: { select: { id: true, title: true, coverImage: true } },
+            featuredArtists: { select: { id: true, name: true } }
+        }
+    });
 
-        res.status(StatusCodes.OK).json(song);
+    if (song) {
+        res.status(StatusCodes.OK).json({ ...song, _id: song.id });
     } else {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Song Not found');
+        throw new Error('Song Not Found');
     }
 });
 
-//@desc - update song detail
+//@desc - update Song
 //@route - PUT /api/songs/:id
 //@Access - Private/Admin
-
 const updateSong = asyncHandler(async (req, res) => {
-    const { title,
-        artistId,
-        albumId,
-        duration,
-        genre,
-        lyrics,
-        isExplicit,
-        featuredArtists } = req.body;
+    const { title, duration, genre, isExplicit, releaseDate, albumId } = req.body;
+    const songId = req.params.id;
 
-    const song = await Song.findById(req.params.id);
-    if (!song) {
+    const existingSong = await prisma.song.findUnique({ where: { id: songId } });
+    if (!existingSong) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Song not found');
+        throw new Error('Song Not Found');
     }
 
-    // Update Song details
-    song.title = title || song.title;
-    song.album = albumId || song.album;
-    song.genre = genre || song.genre;
-    song.lyrics = lyrics || song.lyrics;
-    song.artist = artistId || song.artist;
-    song.duration = duration || song.duration;
-    song.isExplicit = isExplicit !== undefined ? isExplicit === 'true' : song.isExplicit;
-    song.featuredArtists = featuredArtists ? JSON.parse(featuredArtists) : song.featuredArtists;
+    let dataToUpdate = {
+        title: title || existingSong.title,
+        duration: duration || existingSong.duration,
+        genre: genre || existingSong.genre,
+        isExplicit: isExplicit !== undefined ? (isExplicit === 'true' || isExplicit === true) : existingSong.isExplicit,
+        releaseDate: releaseDate ? new Date(releaseDate) : existingSong.releaseDate,
+        albumId: albumId !== undefined ? (albumId || null) : existingSong.albumId,
+    };
 
-    // Update cover image if provided
-    if (req.files && req.files.cover) {
-        const imageResult = await uploadToCloudinary(req.files.cover[0].path, 'melodify/covers');
-        song.coverImage = imageResult.secure_url;
+    if (req.file) {
+        const result = await uploadToCloudinary(req.file.path, 'melodify/songs', 'auto');
+        dataToUpdate.audioUrl = result.secure_url;
     }
 
-    // Update audio file if provided
-    if (req.files && req.files.audio) {
-        const audioResult = await uploadToCloudinary(req.files.audio[0].path, 'melodify/songs');
-        song.audioUrl = audioResult.secure_url;
-    }
+    const updatedSong = await prisma.song.update({
+        where: { id: songId },
+        data: dataToUpdate,
+        include: {
+            artist: { select: { name: true } },
+            album: { select: { title: true } }
+        }
+    });
 
-    const updatedSong = await song.save();
-    res.status(StatusCodes.OK).json(updatedSong);
-
+    res.status(StatusCodes.OK).json({ ...updatedSong, _id: updatedSong.id });
 });
 
 //@desc - Delete Song
 //@route - DELETE /api/songs/:id
 //@Access - Private/Admin
-
 const deleteSong = asyncHandler(async (req, res) => {
-    const song = await Song.findById(req.params.id);
-    if (!song) {
+    try {
+        await prisma.song.delete({
+            where: { id: req.params.id }
+        });
+        res.status(StatusCodes.OK).json({ message: 'Song removed' });
+    } catch (error) {
         res.status(StatusCodes.NOT_FOUND);
-        throw new Error('Song not found');
+        throw new Error('Song Not Found');
     }
-
-    // Remove song from artist's songs
-    await Artist.updateOne(
-        { _id: song.artist },
-        { $pull: { songs: song._id } }
-    );
-
-    // Remove song from album's songs
-    if (song.album) {
-        await Album.updateOne(
-            { _id: song.album },
-            { $pull: { songs: song._id } }
-        );
-    }
-
-    await song.deleteOne();
-    res.status(StatusCodes.OK).json({
-        message: 'song removed'
-    });
 });
 
-//@desc - get top songs by plays
-//@route - GET /api/songs/top?limit=5
+//@desc - get top songs (most played)
+//@route - GET /api/songs/top
 //@Access - Public
-
 const getTopSongs = asyncHandler(async (req, res) => {
-    const { limit } = req.query;
-    // Empty filter to get all songs
-    const filter = {}
-    const songs = await Song.find(filter)
-        .sort({ plays: -1 })
-        .limit(limit)
-        .populate('artist', 'name image')
-        .populate('album', 'title coverImage');
+    const limit = parseInt(req.query.limit) || 10;
+    const songs = await prisma.song.findMany({
+        orderBy: { plays: 'desc' },
+        take: limit,
+        include: {
+            artist: { select: { name: true, image: true } },
+            album: { select: { title: true, coverImage: true } }
+        }
+    });
 
-    res.status(StatusCodes.OK).json(songs);
+    const mappedSongs = songs.map(s => ({ ...s, _id: s.id }));
+    res.status(StatusCodes.OK).json(mappedSongs);
 });
 
 //@desc - get new releases (recently added songs)
-//@route - GET /api/songs/new-releases?limit=5
+//@route - GET /api/songs/new-releases
 //@Access - Public
-
 const getNewReleases = asyncHandler(async (req, res) => {
-    const limit = parseInt(req.query.limit) || 8;
-    // Empty filter to get all songs
-    const filter = {}
-    const songs = await Song.find(filter)
-        .sort({ createdAt: -1, _id: -1 })
-        .limit(limit)
-        .populate('artist', 'name image')
-        .populate('album', 'title coverImage');
+    const limit = parseInt(req.query.limit) || 5;
+    const songs = await prisma.song.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: {
+            artist: { select: { name: true, image: true } },
+            album: { select: { title: true, coverImage: true } }
+        }
+    });
 
-    res.status(StatusCodes.OK).json(songs);
+    const mappedSongs = songs.map(s => ({ ...s, _id: s.id }));
+    res.status(StatusCodes.OK).json(mappedSongs);
 });
 
 module.exports = {
@@ -257,5 +198,5 @@ module.exports = {
     updateSong,
     deleteSong,
     getTopSongs,
-    getNewReleases
-}
+    getNewReleases,
+};
