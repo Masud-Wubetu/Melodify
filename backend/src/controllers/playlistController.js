@@ -163,7 +163,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 //@desc - Add song to playlist
 //@route - POST /api/playlists/:id/songs
 //@Access - Private
-const addSongToPlaylist = asyncHandler(async (req, res) => {
+const addSongsToPlaylist = asyncHandler(async (req, res) => {
     const { songId } = req.body;
     const playlistId = req.params.id;
 
@@ -303,7 +303,7 @@ module.exports = {
     getPlaylistById,
     updatePlaylist,
     deletePlaylist,
-    addSongToPlaylist,
+    addSongsToPlaylist,
     removeSongFromPlaylist,
     addCollaboratorToPlaylist,
     removeCollaboratorToPlaylist,
