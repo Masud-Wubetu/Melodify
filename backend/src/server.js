@@ -1,15 +1,11 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
-require('./models/Song');
-require('./models/Artist');
-require('./models/Album');
-require('./models/Playlist');
-
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-const { StatusCodes } = require('http-status-codes')
+const { StatusCodes } = require('http-status-codes');
+const prisma = require('./lib/prisma');
+
 const userRouter = require('./routes/userRoutes');
 const artistRouter = require('./routes/artistRoutes');
 const albumRouter = require('./routes/albumRoutes');
@@ -20,14 +16,13 @@ const adminRouter = require('./routes/adminRoutes');
 // Initialize app
 const app = express();
 
-// Connect to database
-mongoose
-    .connect(process.env.MONGO_URL)
+// Verify Database Connection
+prisma.$connect()
     .then(() => {
-        console.log("Database Connected...")
+        console.log("PostgreSQL Connected via Prisma...");
     })
     .catch((err) => {
-        console.log('Error Connecting to database', err.message)
+        console.error('Error Connecting to PostgreSQL:', err.message);
     });
 
 // pass incoming data

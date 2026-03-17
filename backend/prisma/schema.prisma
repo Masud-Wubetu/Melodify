@@ -1,13 +1,117 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id                String     @id @default(cuid())
+  name              String
+  email             String     @unique
+  password          String
+  profilePicture    String     @default("https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg")
+  isAdmin           Boolean    @default(false)
+  
+  // Relations
+  createdPlaylists  Playlist[] @relation("PlaylistCreator")
+  collaborations     Playlist[] @relation("PlaylistCollaborators")
+  
+  likedSongs         Song[]     @relation("UserLikedSongs")
+  likedAlbums        Album[]    @relation("UserLikedAlbums")
+  followedArtists    Artist[]   @relation("UserFollowedArtists")
+  followedPlaylists  Playlist[] @relation("UserFollowedPlaylists")
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Artist {
+  id              String   @id @default(cuid())
+  name            String
+  bio             String?
+  image           String   @default("https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg")
+  genres          String[]
+  followersCount  Int      @default(0)
+  releaseDate     DateTime @default(now())
+  
+  // Relations
+  albums          Album[]
+  songs           Song[]   @relation("ArtistSongs")
+  featuredIn      Song[]   @relation("FeaturedArtistSongs")
+  followedBy      User[]   @relation("UserFollowedArtists")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Album {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  coverImage   String   @default("https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg")
+  genre        String?
+  likesCount   Int      @default(0)
+  isExplicit   Boolean  @default(false)
+  releaseDate  DateTime @default(now())
+  
+  // Relations
+  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId     String
+  songs        Song[]
+  likedBy      User[]   @relation("UserLikedAlbums")
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Song {
+  id              String   @id @default(cuid())
+  title           String
+  duration        String
+  audioUrl        String
+  coverImage      String   @default("https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg")
+  genre           String?
+  plays           Int      @default(0)
+  likesCount      Int      @default(0)
+  isExplicit      Boolean  @default(false)
+  releaseDate     DateTime @default(now())
+  
+  // Relations
+  artist          Artist   @relation("ArtistSongs", fields: [artistId], references: [id], onDelete: Cascade)
+  artistId        String
+  album           Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  albumId         String?
+  featuredArtists Artist[] @relation("FeaturedArtistSongs")
+  playlists       Playlist[] @relation("PlaylistSongs")
+  likedBy         User[]   @relation("UserLikedSongs")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Playlist {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  coverImage     String   @default("https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg")
+  isPublic       Boolean  @default(false)
+  followersCount Int      @default(0)
+  
+  // Relations
+  creator        User     @relation("PlaylistCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  creatorId      String
+  collaborators  User[]   @relation("PlaylistCollaborators")
+  songs          Song[]   @relation("PlaylistSongs")
+  followedBy     User[]   @relation("UserFollowedPlaylists")
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
