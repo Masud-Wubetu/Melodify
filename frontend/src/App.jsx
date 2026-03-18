@@ -22,6 +22,8 @@ import PlaylistList from './pages/Playlists/PlaylistList';
 import PlaylistDetail from './pages/Playlists/PlaylistDetail';
 import PlaylistForm from './pages/Playlists/PlaylistForm';
 
+import Search from './pages/Search/Search';
+
 const Dashboard = () => <div className="p-8"><h1 className="text-3xl font-bold mb-6">Good morning</h1></div>;
 
 function App() {
@@ -37,7 +39,7 @@ function App() {
         <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/search" element={<div className="p-8">Search Area</div>} />
+          <Route path="/search" element={<Search />} />
 
           <Route path="/artists" element={<ArtistList />} />
           <Route path="/artists/create" element={<ArtistForm />} />

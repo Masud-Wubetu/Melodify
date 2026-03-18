@@ -29,8 +29,8 @@ const ArtistForm = () => {
         try {
             const data = await apiClient.get(`/artists/${id}`);
             setFormData({ name: data.name || '', bio: data.bio || '' });
-            if (data.imageUrl) {
-                setImagePreview(data.imageUrl.startsWith('http') ? data.imageUrl : `http://localhost:5000${data.imageUrl}`);
+            if (data.image) {
+                setImagePreview(data.image);
             }
         } catch (err) {
             setError('Failed to load artist data');

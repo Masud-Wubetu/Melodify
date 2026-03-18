@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
@@ -75,7 +76,7 @@ model Album {
 model Song {
   id              String   @id @default(cuid())
   title           String
-  duration        String
+  duration        Int
   audioUrl        String
   coverImage      String   @default("https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg")
   genre           String?

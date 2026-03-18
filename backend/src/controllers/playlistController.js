@@ -40,8 +40,16 @@ const createPlaylist = asyncHandler(async (req, res) => {
 //@route - GET /api/playlists
 //@Access - Public
 const getPlaylists = asyncHandler(async (req, res) => {
+    const { search = '' } = req.query;
+
+    const filter = { isPublic: true };
+
+    if (search) {
+        filter.name = { contains: search, mode: 'insensitive' };
+    }
+
     const playlists = await prisma.playlist.findMany({
-        where: { isPublic: true },
+        where: filter,
         include: {
             creator: { select: { name: true, profilePicture: true } }
         }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
+import { usePlayerStore } from '../../store/playerStore';
 import { Button } from '../../components/ui/Button';
 import { Play, ListMusic, Clock, Edit, Trash2, Plus, Search } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
@@ -23,9 +24,10 @@ const PlaylistDetail = () => {
     const [isAddingSong, setIsAddingSong] = useState(false);
     const [availableSongs, setAvailableSongs] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const { setSong, currentSong, isPlaying, togglePlay } = usePlayerStore();
 
     // Validate owner
-    const isOwner = playlist?.user?._id === user?._id || playlist?.user === user?._id || user?.role === 'admin';
+    const isOwner = playlist?.user?.id === user?.id || playlist?.user === user?.id || user?.role === 'admin';
 
     useEffect(() => {
         fetchPlaylistDetails();
@@ -47,8 +49,8 @@ const PlaylistDetail = () => {
             const allSongs = await apiClient.get('/songs');
 
             // Map current playlist song IDs to exclude them from the list
-            const playlistSongIds = playlist.songs.map(s => typeof s === 'object' ? s._id : s);
-            const filtered = allSongs.filter(s => !playlistSongIds.includes(s._id));
+            const playlistSongIds = playlist.songs.map(s => typeof s === 'object' ? s.id : s);
+            const filtered = allSongs.filter(s => !playlistSongIds.includes(s.id));
 
             setAvailableSongs(filtered);
         } catch (error) {
@@ -67,7 +69,7 @@ const PlaylistDetail = () => {
         try {
             await apiClient.post(`/playlists/${id}/songs`, { songId });
             await fetchPlaylistDetails(); // Refresh
-            setAvailableSongs(prev => prev.filter(s => s._id !== songId));
+            setAvailableSongs(prev => prev.filter(s => s.id !== songId));
         } catch (error) {
             alert('Failed to add song to playlist');
         }
@@ -108,9 +110,9 @@ const PlaylistDetail = () => {
             {/* Header Banner */}
             <div className="h-80 w-full relative flex items-end p-8 bg-gradient-to-b from-teal-900/40 to-zinc-950/90">
                 <div className="relative z-20 flex items-end gap-6 w-full">
-                    {playlist.imageUrl ? (
+                    {playlist.coverImage ? (
                         <img
-                            src={playlist.imageUrl.startsWith('http') ? playlist.imageUrl : `http://localhost:5000${playlist.imageUrl}`}
+                            src={playlist.coverImage.startsWith('http') ? playlist.coverImage : `http://localhost:5000${playlist.coverImage}`}
                             alt={playlist.name}
                             className="w-56 h-56 shadow-2xl object-cover rounded-md"
                         />
@@ -137,13 +139,30 @@ const PlaylistDetail = () => {
 
             {/* Action Bar */}
             <div className="p-8 pb-6 flex items-center gap-6 bg-gradient-to-b from-zinc-950/90 to-transparent">
-                <button className="h-16 w-16 rounded-full bg-primary hover:bg-primary-hover flex items-center justify-center text-black shadow-[0_8px_8px_rgba(0,0,0,0.3)] hover:scale-105 transition-all">
-                    <Play className="h-7 w-7 ml-1" fill="currentColor" />
+                <button
+                    className="h-16 w-16 rounded-full bg-primary hover:bg-primary-hover flex items-center justify-center text-black shadow-[0_8px_8px_rgba(0,0,0,0.3)] hover:scale-105 transition-all"
+                    onClick={() => {
+                        if (songs.length > 0) {
+                            if (currentSong?.playlistId === id) {
+                                togglePlay();
+                            } else {
+                                // We might need to ensure the songs have playlistId for this check to work perfectly
+                                const playlistSongs = songs.map(s => ({ ...s, playlistId: id }));
+                                setSong(playlistSongs[0], playlistSongs);
+                            }
+                        }
+                    }}
+                >
+                    {isPlaying && currentSong?.playlistId === id ? (
+                        <Pause className="h-7 w-7" fill="currentColor" />
+                    ) : (
+                        <Play className="h-7 w-7 ml-1" fill="currentColor" />
+                    )}
                 </button>
 
                 {isOwner && (
                     <div className="flex gap-4 items-center">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/playlists/edit/${playlist._id}`)}>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/playlists/edit/${playlist.id}`)}>
                             <Edit className="h-4 w-4 mr-2" /> Edit Details
                         </Button>
                         <Button variant="outline" size="sm" onClick={handleToggleAddSong} className={isAddingSong ? 'bg-zinc-800 text-white border-zinc-600' : ''}>
@@ -192,23 +211,37 @@ const PlaylistDetail = () => {
 
                             return (
                                 <div
-                                    key={song._id}
-                                    className="group grid grid-cols-[16px_1fr_minmax(120px,200px)] md:grid-cols-[16px_1fr_120px_minmax(120px,200px)] gap-4 px-4 py-3 rounded-md hover:bg-zinc-800/50 transition-colors items-center cursor-pointer relative"
-                                    onClick={() => !isAddingSong && navigate(`/songs/${song._id}`)}
+                                    key={song.id}
+                                    className={`group grid grid-cols-[16px_1fr_minmax(120px,200px)] md:grid-cols-[16px_1fr_120px_minmax(120px,200px)] gap-4 px-4 py-3 rounded-md hover:bg-zinc-800/50 transition-colors items-center cursor-pointer relative ${currentSong?.id === song.id ? 'bg-zinc-800/40 text-primary' : ''}`}
+                                    onClick={() => {
+                                        if (!isAddingSong) {
+                                            const playlistSongs = songs.map(s => ({ ...s, playlistId: id }));
+                                            const currentSongWithPlaylistId = playlistSongs.find(s => s.id === song.id);
+                                            setSong(currentSongWithPlaylistId, playlistSongs);
+                                        }
+                                    }}
                                 >
                                     <div className="text-center text-zinc-400 text-sm group-hover:hidden">{index + 1}</div>
                                     <div className="text-center hidden group-hover:flex justify-center text-white">
-                                        <Play className="h-4 w-4 fill-white" />
+                                        {currentSong?.id === song.id && isPlaying ? (
+                                            <div className="flex gap-0.5 h-3 items-end">
+                                                <div className="w-1 bg-primary animate-bounce-short"></div>
+                                                <div className="w-1 bg-primary [animation-delay:0.2s] animate-bounce-short"></div>
+                                                <div className="w-1 bg-primary [animation-delay:0.4s] animate-bounce-short"></div>
+                                            </div>
+                                        ) : (
+                                            <Play className="h-4 w-4 fill-white" />
+                                        )}
                                     </div>
 
-                                    <div>
-                                        <div className="text-white font-medium line-clamp-1">{song.title}</div>
+                                    <div onClick={(e) => { if (!isAddingSong) { e.stopPropagation(); navigate(`/songs/${song.id}`); } }}>
+                                        <div className={`font-medium line-clamp-1 ${currentSong?.id === song.id ? 'text-primary' : 'text-white'}`}>{song.title}</div>
                                         <div className="text-zinc-400 text-sm line-clamp-1 group-hover:text-white transition-colors">{artistName}</div>
                                     </div>
                                     <div className="hidden md:block text-zinc-400 text-sm line-clamp-1 hover:underline cursor-pointer" onClick={(e) => {
-                                        if (!isAddingSong && song.album?._id) {
+                                        if (!isAddingSong && song.album?.id) {
                                             e.stopPropagation();
-                                            navigate(`/albums/${song.album._id}`);
+                                            navigate(`/albums/${song.album.id}`);
                                         }
                                     }}>
                                         {albumName}
@@ -219,12 +252,12 @@ const PlaylistDetail = () => {
                                         {isOwner && (
                                             <div className="absolute right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {isAddingSong ? (
-                                                    <Button size="sm" variant="outline" className="h-8" onClick={(e) => { e.stopPropagation(); handleAddSong(song._id); }}>
+                                                    <Button size="sm" variant="outline" className="h-8" onClick={(e) => { e.stopPropagation(); handleAddSong(song.id); }}>
                                                         Add
                                                     </Button>
                                                 ) : (
                                                     <button
-                                                        onClick={(e) => handleRemoveSong(e, song._id)}
+                                                        onClick={(e) => handleRemoveSong(e, song.id)}
                                                         className="text-zinc-400 hover:text-red-500 transition-colors p-1 bg-zinc-900 rounded-full"
                                                     >
                                                         <Trash2 className="h-4 w-4" />

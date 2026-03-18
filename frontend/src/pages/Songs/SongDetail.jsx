@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
+import { usePlayerStore } from '../../store/playerStore';
 import { Button } from '../../components/ui/Button';
 import { Play, Music, Heart, Edit, MoreHorizontal } from 'lucide-react';
 
@@ -20,7 +21,9 @@ const SongDetail = () => {
 
     const [song, setSong] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isPlaying, setIsPlaying] = useState(false);
+    const { setSong: setGlobalSong, isPlaying, togglePlay, currentSong } = usePlayerStore();
+
+    const isCurrentPlaying = currentSong?.id === id && isPlaying;
 
     useEffect(() => {
         fetchSongDetails();
@@ -56,7 +59,7 @@ const SongDetail = () => {
     if (typeof song.artist === 'object' && song.artist?.name) artistName = song.artist.name;
     if (typeof song.album === 'object') {
         if (song.album?.title) albumName = song.album.title;
-        if (song.album?.imageUrl) albumImage = song.album.imageUrl;
+        if (song.album?.coverImage) albumImage = song.album.coverImage;
     }
 
     return (
@@ -91,14 +94,14 @@ const SongDetail = () => {
                         <div className="flex items-center gap-2 text-sm md:text-base font-bold text-zinc-100 drop-shadow-md">
                             <span
                                 className="hover:underline cursor-pointer flex items-center gap-2"
-                                onClick={() => song.artist?._id && navigate(`/artists/${song.artist._id}`)}
+                                onClick={() => song.artist?.id && navigate(`/artists/${song.artist.id}`)}
                             >
                                 {artistName}
                             </span>
                             <span className="text-zinc-300">•</span>
                             <span
                                 className="hover:underline cursor-pointer"
-                                onClick={() => song.album?._id && navigate(`/albums/${song.album._id}`)}
+                                onClick={() => song.album?.id && navigate(`/albums/${song.album.id}`)}
                             >
                                 {albumName}
                             </span>
@@ -115,12 +118,18 @@ const SongDetail = () => {
             <div className="p-8 pb-6 flex items-center gap-6 bg-gradient-to-b from-zinc-950/90 to-zinc-950">
                 <button
                     className="h-16 w-16 rounded-full bg-primary hover:bg-primary-hover hover:scale-105 active:scale-95 flex items-center justify-center text-black shadow-xl transition-all"
-                    onClick={() => setIsPlaying(!isPlaying)}
+                    onClick={() => {
+                        if (currentSong?.id === id) {
+                            togglePlay();
+                        } else {
+                            setGlobalSong(song);
+                        }
+                    }}
                 >
-                    {isPlaying ? (
-                        <div className="flex gap-1 h-6 items-center">
-                            <div className="w-1.5 h-6 bg-black rounded-sm"></div>
-                            <div className="w-1.5 h-6 bg-black rounded-sm"></div>
+                    {isCurrentPlaying ? (
+                        <div className="flex gap-1.5 h-6 items-center">
+                            <div className="w-1.5 h-6 bg-black rounded-sm animate-pulse"></div>
+                            <div className="w-1.5 h-6 bg-black rounded-sm animate-pulse-delay"></div>
                         </div>
                     ) : (
                         <Play className="h-8 w-8 ml-1" fill="currentColor" />
@@ -137,7 +146,7 @@ const SongDetail = () => {
 
                 {isAdmin && (
                     <div className="flex gap-4 items-center ml-auto">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/songs/edit/${song._id}`)}>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/songs/edit/${song.id}`)}>
                             <Edit className="h-4 w-4 mr-2" /> Edit Song
                         </Button>
                     </div>

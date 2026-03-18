@@ -1,11 +1,20 @@
 const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL;
+// Neon Pooler often needs pgbouncer=true in the URL
+let dbUrl = process.env.DATABASE_URL;
+if (dbUrl && dbUrl.includes('neon.tech') && !dbUrl.includes('pgbouncer=true')) {
+    const separator = dbUrl.includes('?') ? '&' : '?';
+    dbUrl += `${separator}pgbouncer=true&connect_timeout=15`;
+}
 
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: dbUrl,
+        },
+    },
+    log: ['query', 'info', 'warn', 'error'],
+});
 
+module.exports = prisma;
 module.exports = prisma;

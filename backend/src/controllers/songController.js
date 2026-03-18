@@ -15,10 +15,21 @@ const createSong = asyncHandler(async (req, res) => {
     }
 
     let audioUrl = '';
-    if (req.file) {
-        const result = await uploadToCloudinary(req.file.path, 'melodify/songs', 'auto');
-        audioUrl = result.secure_url;
-    } else {
+    let coverImageUrl = '';
+
+    if (req.files) {
+        if (req.files['audio'] && req.files['audio'][0]) {
+            const result = await uploadToCloudinary(req.files['audio'][0].path, 'melodify/songs');
+            audioUrl = result.secure_url;
+        }
+
+        if (req.files['cover'] && req.files['cover'][0]) {
+            const result = await uploadToCloudinary(req.files['cover'][0].path, 'melodify/songs');
+            coverImageUrl = result.secure_url;
+        }
+    }
+
+    if (!audioUrl) {
         res.status(StatusCodes.BAD_REQUEST);
         throw new Error('Audio file is required');
     }
@@ -28,9 +39,10 @@ const createSong = asyncHandler(async (req, res) => {
             title,
             artistId,
             albumId: albumId || null,
-            duration,
+            duration: parseInt(duration),
             genre,
             audioUrl,
+            coverImage: coverImageUrl || undefined,
             isExplicit: isExplicit === 'true' || isExplicit === true,
             releaseDate: releaseDate ? new Date(releaseDate) : undefined,
         },
@@ -49,12 +61,19 @@ const createSong = asyncHandler(async (req, res) => {
 const getSongs = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, search = '', genre } = req.query;
 
-    const filter = {
-        AND: [
-            search ? { title: { contains: search, mode: 'insensitive' } } : {},
-            genre ? { genre: { contains: genre, mode: 'insensitive' } } : {},
-        ]
-    };
+    const filter = {};
+    const andFilters = [];
+
+    if (search) {
+        andFilters.push({ title: { contains: search, mode: 'insensitive' } });
+    }
+    if (genre) {
+        andFilters.push({ genre: { contains: genre, mode: 'insensitive' } });
+    }
+
+    if (andFilters.length > 0) {
+        filter.AND = andFilters;
+    }
 
     const count = await prisma.song.count({ where: filter });
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -105,7 +124,7 @@ const getSongById = asyncHandler(async (req, res) => {
 //@route - PUT /api/songs/:id
 //@Access - Private/Admin
 const updateSong = asyncHandler(async (req, res) => {
-    const { title, duration, genre, isExplicit, releaseDate, albumId } = req.body;
+    const { title, duration, genre, isExplicit, releaseDate, albumId, artistId } = req.body;
     const songId = req.params.id;
 
     const existingSong = await prisma.song.findUnique({ where: { id: songId } });
@@ -121,6 +140,7 @@ const updateSong = asyncHandler(async (req, res) => {
         isExplicit: isExplicit !== undefined ? (isExplicit === 'true' || isExplicit === true) : existingSong.isExplicit,
         releaseDate: releaseDate ? new Date(releaseDate) : existingSong.releaseDate,
         albumId: albumId !== undefined ? (albumId || null) : existingSong.albumId,
+        artistId: artistId || existingSong.artistId,
     };
 
     if (req.files) {

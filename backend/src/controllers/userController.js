@@ -71,6 +71,11 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+        res.status(StatusCodes.BAD_REQUEST);
+        throw new Error('Please provide email and password');
+    }
+
     // Find the User
     const user = await prisma.user.findUnique({
         where: { email },

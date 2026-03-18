@@ -13,6 +13,7 @@ const PlaylistForm = () => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
+        isPublic: false,
     });
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
@@ -30,10 +31,11 @@ const PlaylistForm = () => {
             const data = await apiClient.get(`/playlists/${id}`);
             setFormData({
                 name: data.name || '',
-                description: data.description || ''
+                description: data.description || '',
+                isPublic: data.isPublic || false
             });
-            if (data.imageUrl) {
-                setImagePreview(data.imageUrl.startsWith('http') ? data.imageUrl : `http://localhost:5000${data.imageUrl}`);
+            if (data.coverImage) {
+                setImagePreview(data.coverImage);
             }
         } catch (err) {
             setError('Failed to load playlist data');
@@ -41,7 +43,11 @@ const PlaylistForm = () => {
     };
 
     const handleInputChange = (e) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const handleImageChange = (e) => {
@@ -66,9 +72,11 @@ const PlaylistForm = () => {
             const data = new FormData();
             data.append('name', formData.name);
             data.append('description', formData.description);
+            data.append('isPublic', formData.isPublic);
 
             if (imageFile) {
-                data.append('image', imageFile);
+                // Must match the backend 'coverImage' field name
+                data.append('coverImage', imageFile);
             }
 
             const headers = { 'Content-Type': 'multipart/form-data' };
@@ -143,6 +151,20 @@ const PlaylistForm = () => {
                                 onChange={handleInputChange}
                                 className="w-full min-h-32 rounded-md border border-zinc-700 bg-zinc-950 p-4 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary placeholder:text-zinc-500 resize-y"
                             />
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 bg-zinc-950 rounded-lg border border-zinc-800">
+                            <input
+                                type="checkbox"
+                                name="isPublic"
+                                id="isPublic"
+                                checked={formData.isPublic}
+                                onChange={handleInputChange}
+                                className="h-5 w-5 rounded border-zinc-700 bg-zinc-900 text-primary focus:ring-primary"
+                            />
+                            <label htmlFor="isPublic" className="text-sm font-medium text-white cursor-pointer select-none">
+                                Make this playlist public
+                            </label>
                         </div>
                     </div>
                 </div>

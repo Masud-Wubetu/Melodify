@@ -9,7 +9,7 @@ const { createAlbum,
     getNewReleases,
 } = require('../controllers/albumController');
 const { protect, isAdmin } = require('../middlewares/auth');
-const upload = require('../middlewares/upload')
+const { upload } = require('../middlewares/upload')
 const albumRouter = express.Router();
 
 // Public routes

@@ -1,6 +1,14 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('🚨 Uncaught Exception:', err);
+});
+
 const express = require('express');
 const cors = require('cors');
 const { StatusCodes } = require('http-status-codes');
@@ -68,6 +76,19 @@ app.use((err, req, res, next) => {
 
 //Start the server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log('Server is Running on port', PORT)
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error('🚨 Error: Port', PORT, 'is already in use. The backend is likely already running.');
+        process.exit(1);
+    } else {
+        console.error('📡 Server error:', err);
+    }
+});
+
+server.on('close', () => {
+    console.log('📡 Server closed');
 });

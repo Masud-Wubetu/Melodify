@@ -1,14 +1,14 @@
 const express = require('express');
-const {createSong,
-       getSongs,
-       getSongById,
-       updateSong,
-       deleteSong,
-       getTopSongs,
-       getNewReleases,
+const { createSong,
+    getSongs,
+    getSongById,
+    updateSong,
+    deleteSong,
+    getTopSongs,
+    getNewReleases,
 } = require('../controllers/songController')
-const { protect, isAdmin }= require('../middlewares/auth');
-const upload = require('../middlewares/upload')
+const { protect, isAdmin } = require('../middlewares/auth');
+const { upload } = require('../middlewares/upload')
 const songRouter = express.Router();
 
 // Configure multer to handle multiple file

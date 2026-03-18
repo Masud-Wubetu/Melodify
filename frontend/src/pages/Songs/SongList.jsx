@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
+import { usePlayerStore } from '../../store/playerStore';
 import { Button } from '../../components/ui/Button';
 import { Plus, Music, Play, Clock, Edit, Trash2 } from 'lucide-react';
 
@@ -16,6 +17,7 @@ const SongList = () => {
     const [songs, setSongs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const { user } = useAuthStore();
+    const { setSong, currentSong, isPlaying } = usePlayerStore();
     const navigate = useNavigate();
     const isAdmin = user?.role === 'admin';
 
@@ -41,7 +43,7 @@ const SongList = () => {
         if (window.confirm('Are you sure you want to delete this song?')) {
             try {
                 await apiClient.delete(`/songs/${id}`);
-                setSongs(prev => prev.filter(s => s._id !== id));
+                setSongs(prev => prev.filter(s => s.id !== id));
             } catch (error) {
                 alert('Failed to delete song');
             }
@@ -86,27 +88,35 @@ const SongList = () => {
                     <div className="flex flex-col">
                         {songs.map((song, index) => (
                             <div
-                                key={song._id}
-                                onClick={() => navigate(`/songs/${song._id}`)}
-                                className="group grid grid-cols-[16px_1fr_1fr_120px_minmax(120px,160px)] gap-4 px-6 py-4 hover:bg-zinc-800/50 transition-colors items-center cursor-pointer border-b border-zinc-900/50 last:border-0 relative"
+                                key={song.id}
+                                onClick={() => setSong(song, songs)}
+                                className={`group grid grid-cols-[16px_1fr_1fr_120px_minmax(120px,160px)] gap-4 px-6 py-4 hover:bg-zinc-800/50 transition-colors items-center cursor-pointer border-b border-zinc-900/50 last:border-0 relative ${currentSong?.id === song.id ? 'bg-zinc-800/40 text-primary' : ''}`}
                             >
                                 <div className="text-center text-zinc-400 text-sm w-4 flex justify-center group-hover:hidden">
                                     {index + 1}
                                 </div>
                                 <div className="text-center hidden group-hover:flex justify-center text-white">
-                                    <Play className="h-4 w-4 fill-white" />
+                                    {currentSong?.id === song.id && isPlaying ? (
+                                        <div className="flex gap-0.5 h-3 items-end">
+                                            <div className="w-1 bg-primary animate-bounce-short"></div>
+                                            <div className="w-1 bg-primary animate-bounce-short [animation-delay:0.2s]"></div>
+                                            <div className="w-1 bg-primary animate-bounce-short [animation-delay:0.4s]"></div>
+                                        </div>
+                                    ) : (
+                                        <Play className="h-4 w-4 fill-white" />
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-4">
                                     <div className="h-10 w-10 bg-zinc-800 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                        {song.album?.imageUrl ? (
-                                            <img src={song.album.imageUrl.startsWith('http') ? song.album.imageUrl : `http://localhost:5000${song.album.imageUrl}`} alt="" className="h-full w-full object-cover" />
+                                        {song.album?.coverImage ? (
+                                            <img src={song.album.coverImage.startsWith('http') ? song.album.coverImage : `http://localhost:5000${song.album.coverImage}`} alt="" className="h-full w-full object-cover" />
                                         ) : (
                                             <Music className="h-5 w-5 text-zinc-500" />
                                         )}
                                     </div>
-                                    <div>
-                                        <div className="text-white font-medium line-clamp-1">{song.title}</div>
+                                    <div onClick={(e) => { e.stopPropagation(); navigate(`/songs/${song.id}`); }}>
+                                        <div className={`font-medium line-clamp-1 ${currentSong?.id === song.id ? 'text-primary' : 'text-white'}`}>{song.title}</div>
                                         <div className="text-zinc-400 text-sm line-clamp-1 group-hover:text-white transition-colors">
                                             {typeof song.artist === 'object' ? song.artist?.name : 'Unknown Artist'}
                                         </div>
@@ -114,15 +124,15 @@ const SongList = () => {
                                 </div>
 
                                 <div className="hidden md:block text-zinc-400 text-sm line-clamp-1 hover:underline cursor-pointer" onClick={(e) => {
-                                    if (song.album?._id) {
+                                    if (song.album?.id) {
                                         e.stopPropagation();
-                                        navigate(`/albums/${song.album._id}`);
+                                        navigate(`/albums/${song.album.id}`);
                                     }
                                 }}>
                                     {typeof song.album === 'object' ? song.album?.title : 'Unknown Album'}
                                 </div>
 
-                                <div className="text-sm text-zinc-400 text-right">{song.playCount || 0}</div>
+                                <div className="text-sm text-zinc-400 text-right">{song.plays || 0}</div>
 
                                 <div className="flex justify-end items-center pr-2 text-sm text-zinc-400">
                                     {formatDuration(song.duration)}
@@ -130,13 +140,13 @@ const SongList = () => {
                                     {isAdmin && (
                                         <div className="absolute right-6 opacity-0 group-hover:opacity-100 flex items-center gap-2 transition-opacity">
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/songs/edit/${song._id}`); }}
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/songs/edit/${song.id}`); }}
                                                 className="text-zinc-400 hover:text-white transition-colors p-1"
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </button>
                                             <button
-                                                onClick={(e) => handleDelete(e, song._id)}
+                                                onClick={(e) => handleDelete(e, song.id)}
                                                 className="text-zinc-400 hover:text-red-500 transition-colors p-1"
                                             >
                                                 <Trash2 className="h-4 w-4" />

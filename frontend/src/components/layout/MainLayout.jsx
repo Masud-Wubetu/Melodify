@@ -1,6 +1,7 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { Home, Search, Library, Music, Mic2, Disc3, ListMusic } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import Player from './Player';
 
 const Sidebar = () => {
     return (
@@ -74,6 +75,9 @@ const MainLayout = () => {
                 <main className="flex-1 relative">
                     <Outlet />
                 </main>
+            </div>
+            <div className="fixed bottom-0 left-0 right-0 z-50">
+                <Player />
             </div>
         </div>
     );

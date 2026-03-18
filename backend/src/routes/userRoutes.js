@@ -12,7 +12,7 @@ const {
        deleteUser,
        toggleAdminStatus } = require('../controllers/userController');
 const { protect, isAdmin } = require('../middlewares/auth');
-const upload = require('../middlewares/upload');
+const { upload } = require('../middlewares/upload');
 
 // Public routes
 userRouter.post('/register', registerUser);

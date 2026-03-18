@@ -49,12 +49,19 @@ const createAlbum = asyncHandler(async (req, res) => {
 const getAlbums = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, search = '', genre } = req.query;
 
-    const filter = {
-        AND: [
-            search ? { title: { contains: search, mode: 'insensitive' } } : {},
-            genre ? { genre: { contains: genre, mode: 'insensitive' } } : {},
-        ]
-    };
+    const filter = {};
+    const andFilters = [];
+
+    if (search) {
+        andFilters.push({ title: { contains: search, mode: 'insensitive' } });
+    }
+    if (genre) {
+        andFilters.push({ genre: { contains: genre, mode: 'insensitive' } });
+    }
+
+    if (andFilters.length > 0) {
+        filter.AND = andFilters;
+    }
 
     const count = await prisma.album.count({ where: filter });
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -104,7 +111,7 @@ const getAlbumById = asyncHandler(async (req, res) => {
 //@route - PUT /api/albums/:id
 //@Access - Private/Admin
 const updateAlbum = asyncHandler(async (req, res) => {
-    const { title, genre, description, isExplicit, releaseDate } = req.body;
+    const { title, genre, description, isExplicit, releaseDate, artistId } = req.body;
     const albumId = req.params.id;
 
     const existingAlbum = await prisma.album.findUnique({ where: { id: albumId } });
@@ -119,6 +126,7 @@ const updateAlbum = asyncHandler(async (req, res) => {
         description: description || existingAlbum.description,
         isExplicit: isExplicit !== undefined ? (isExplicit === 'true' || isExplicit === true) : existingAlbum.isExplicit,
         releaseDate: releaseDate ? new Date(releaseDate) : existingAlbum.releaseDate,
+        artistId: artistId || existingAlbum.artistId,
     };
 
     if (req.file) {

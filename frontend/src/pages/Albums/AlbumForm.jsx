@@ -33,7 +33,7 @@ const AlbumForm = () => {
             const data = await apiClient.get('/artists');
             setArtists(data);
             if (!isEditing && data.length > 0) {
-                setFormData(prev => ({ ...prev, artistId: data[0]._id }));
+                setFormData(prev => ({ ...prev, artistId: data[0].id }));
             }
         } catch (err) {
             console.error("Failed to fetch artists");
@@ -44,12 +44,11 @@ const AlbumForm = () => {
         try {
             const data = await apiClient.get(`/albums/${id}`);
             setFormData({
-                title: data.title || '',
-                artistId: typeof data.artist === 'object' ? data.artist._id : (data.artist || ''),
+                artistId: data.artist?.id || data.artist?.id || data.artist || '',
                 releaseYear: data.releaseYear?.toString() || ''
             });
-            if (data.imageUrl) {
-                setImagePreview(data.imageUrl.startsWith('http') ? data.imageUrl : `http://localhost:5000${data.imageUrl}`);
+            if (data.coverImage) {
+                setImagePreview(data.coverImage);
             }
         } catch (err) {
             setError('Failed to load album data');
@@ -81,13 +80,12 @@ const AlbumForm = () => {
         try {
             const data = new FormData();
             data.append('title', formData.title);
-            data.append('artist', formData.artistId);
-            if (formData.releaseYear) {
-                data.append('releaseYear', formData.releaseYear);
-            }
+            data.append('artistId', formData.artistId);
+            data.append('releaseYear', formData.releaseYear || '');
 
             if (imageFile) {
-                data.append('image', imageFile);
+                // Must match the backend 'coverImage' field name
+                data.append('coverImage', imageFile);
             }
 
             const headers = { 'Content-Type': 'multipart/form-data' };
@@ -161,7 +159,7 @@ const AlbumForm = () => {
                             >
                                 <option value="" disabled>Select an artist</option>
                                 {artists.map(artist => (
-                                    <option key={artist._id} value={artist._id}>{artist.name}</option>
+                                    <option key={artist.id} value={artist.id}>{artist.name}</option>
                                 ))}
                             </select>
                         </div>

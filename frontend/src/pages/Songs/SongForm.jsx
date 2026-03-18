@@ -22,6 +22,8 @@ const SongForm = () => {
     const [albums, setAlbums] = useState([]);
     const [filteredAlbums, setFilteredAlbums] = useState([]);
     const [songFile, setSongFile] = useState(null);
+    const [coverFile, setCoverFile] = useState(null);
+    const [coverPreview, setCoverPreview] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -36,7 +38,7 @@ const SongForm = () => {
         // Filter albums when artist changes
         if (formData.artistId) {
             setFilteredAlbums(albums.filter(a => {
-                const aId = typeof a.artist === 'object' ? a.artist._id : a.artist;
+                const aId = typeof a.artist === 'object' ? a.artist.id : a.artist;
                 return aId === formData.artistId;
             }));
         } else {
@@ -54,7 +56,7 @@ const SongForm = () => {
             setAlbums(albumsData);
 
             if (!isEditing && artistsData.length > 0 && !formData.artistId) {
-                setFormData(prev => ({ ...prev, artistId: artistsData[0]._id }));
+                setFormData(prev => ({ ...prev, artistId: artistsData[0].id }));
             }
         } catch (err) {
             console.error("Failed to fetch metadata");
@@ -66,10 +68,13 @@ const SongForm = () => {
             const data = await apiClient.get(`/songs/${id}`);
             setFormData({
                 title: data.title || '',
-                artistId: typeof data.artist === 'object' ? data.artist._id : (data.artist || ''),
-                albumId: typeof data.album === 'object' ? data.album?._id : (data.album || ''),
+                artistId: data.artist?.id || data.artist?.id || data.artist || '',
+                albumId: data.album?.id || data.album?.id || data.album || '',
                 duration: data.duration?.toString() || ''
             });
+            if (data.coverImage) {
+                setCoverPreview(data.coverImage);
+            }
         } catch (err) {
             setError('Failed to load song data');
         }
@@ -94,6 +99,14 @@ const SongForm = () => {
         }
     };
 
+    const handleCoverChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setCoverFile(file);
+            setCoverPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.title || !formData.artistId) {
@@ -112,17 +125,19 @@ const SongForm = () => {
         try {
             const data = new FormData();
             data.append('title', formData.title);
-            data.append('artist', formData.artistId);
+            data.append('artistId', formData.artistId);
 
-            if (formData.albumId) {
-                data.append('album', formData.albumId);
-            }
+            data.append('albumId', formData.albumId || '');
             if (formData.duration) {
                 data.append('duration', formData.duration);
             }
 
             if (songFile) {
-                data.append('song', songFile);
+                data.append('audio', songFile);
+            }
+
+            if (coverFile) {
+                data.append('cover', coverFile);
             }
 
             const headers = { 'Content-Type': 'multipart/form-data' };
@@ -154,14 +169,40 @@ const SongForm = () => {
                     </div>
                 )}
 
-                <Input
-                    label="Song Title *"
-                    name="title"
-                    placeholder="E.g. Blank Space"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    className="h-14 text-lg bg-zinc-950"
-                />
+                <div className="flex flex-col md:flex-row gap-8">
+                    <div className="w-full md:w-1/3 flex flex-col items-center">
+                        <div className="w-48 h-48 rounded-md border-4 border-zinc-800 bg-zinc-950 flex items-center justify-center overflow-hidden mb-4 relative group cursor-pointer shadow-xl">
+                            {coverPreview ? (
+                                <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <Upload className="h-16 w-16 text-zinc-600" />
+                            )}
+
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
+                                <Upload className="h-8 w-8 mb-2" />
+                                <span className="text-sm font-semibold">Song Cover</span>
+                            </div>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                onChange={handleCoverChange}
+                            />
+                        </div>
+                        <p className="text-xs text-zinc-500 text-center">Optional: JPEG, PNG or WEBP</p>
+                    </div>
+
+                    <div className="w-full md:w-2/3">
+                        <Input
+                            label="Song Title *"
+                            name="title"
+                            placeholder="E.g. Blank Space"
+                            value={formData.title}
+                            onChange={handleInputChange}
+                            className="h-14 text-lg bg-zinc-950"
+                        />
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -174,7 +215,7 @@ const SongForm = () => {
                         >
                             <option value="" disabled>Select an artist</option>
                             {artists.map(artist => (
-                                <option key={artist._id} value={artist._id}>{artist.name}</option>
+                                <option key={artist.id} value={artist.id}>{artist.name}</option>
                             ))}
                         </select>
                     </div>
@@ -190,7 +231,7 @@ const SongForm = () => {
                         >
                             <option value="">No Album (Single)</option>
                             {filteredAlbums.map(album => (
-                                <option key={album._id} value={album._id}>{album.title}</option>
+                                <option key={album.id} value={album.id}>{album.title}</option>
                             ))}
                         </select>
                     </div>
