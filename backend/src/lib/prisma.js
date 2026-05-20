@@ -1,31 +1,21 @@
 const { PrismaClient } = require('@prisma/client');
-const { Pool, neonConfig } = require('@neondatabase/serverless');
+const { neonConfig } = require('@neondatabase/serverless');
 const { PrismaNeon } = require('@prisma/adapter-neon');
 const ws = require('ws');
 
-// Configure Neon to use the 'ws' package for WebSockets in Node.js
+// Required: configure Neon to use the 'ws' package for WebSocket connections in Node.js
 neonConfig.webSocketConstructor = ws;
 
-let dbUrl = process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/^"|"$/g, '') : '';
-if (dbUrl && dbUrl.includes('-pooler')) {
-    dbUrl = dbUrl.replace('-pooler', '');
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is not set.');
 }
 
-// Debugging logs to verify env loading
-console.log('--- PRISMA DEBUG ---');
-console.log('DATABASE_URL defined:', !!dbUrl);
-if (dbUrl) {
-    console.log('DATABASE_URL length:', dbUrl.length);
-    console.log('DATABASE_URL prefix:', dbUrl.substring(0, 15) + '...');
-}
-console.log('---------------------');
+// PrismaNeon (v7+) is a factory — it takes a config object and creates the Pool internally.
+// Do NOT pass a Pool instance directly.
+const adapter = new PrismaNeon({ connectionString });
 
-const pool = new Pool({ connectionString: dbUrl });
-const adapter = new PrismaNeon(pool);
-
-const prisma = new PrismaClient({
-    adapter,
-    log: ['query', 'info', 'warn', 'error'],
-});
+const prisma = new PrismaClient({ adapter });
 
 module.exports = prisma;
